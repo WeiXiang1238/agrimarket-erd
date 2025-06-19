@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 13, 2025 at 07:21 PM
+-- Generation Time: Jun 19, 2025 at 04:51 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -218,6 +218,16 @@ CREATE TABLE `subscription_tiers` (
   `is_archive` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `subscription_tiers`
+--
+
+INSERT INTO `subscription_tiers` (`tier_id`, `name`, `monthly_fee`, `commission_percent`, `description`, `is_archive`) VALUES
+(1, 'Bronze', 0.00, 15.00, 'Basic plan with 15% commission.', 0),
+(2, 'Silver', 49.90, 11.00, 'Intermediate plan with 11% commission.', 0),
+(3, 'Gold', 89.90, 7.00, 'Premium plan with 7% commission.', 0),
+(4, 'Platinum', 119.90, 5.00, 'Ultimate plan with 5% commission.', 0);
+
 -- --------------------------------------------------------
 
 --
@@ -233,6 +243,15 @@ CREATE TABLE `users` (
   `is_archive` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`user_id`, `name`, `email`, `password`, `role`, `is_archive`, `created_at`) VALUES
+(1, 'admin1', 'admin1@agrimarket.com', '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'admin', 0, '2025-06-19 14:39:41'),
+(2, 'admin2', 'admin2@agrimarket.com', '$2y$10$kl4SktklyYQdRxYqq7PLeuFja.77aVWkPdwMXb44gJjuwLnOhpxyi', 'admin', 0, '2025-06-19 14:39:53'),
+(3, 'Vendor A', 'vendorA@example.com', '$2y$10$dMrfPIxkrAyt0lGVOORatO/.idXwIkPKaDkwz4pM2ZKcZBS4jiw42', 'admin', 0, '2025-06-19 14:40:30');
 
 -- --------------------------------------------------------
 
@@ -252,6 +271,13 @@ CREATE TABLE `vendors` (
   `tier_id` int(11) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `vendors`
+--
+
+INSERT INTO `vendors` (`vendor_id`, `user_id`, `business_name`, `contact_number`, `address`, `subscription_tier_id`, `registration_date`, `is_archive`, `tier_id`) VALUES
+(2, 3, 'vendor A', '012-3456789', 'Lot 1, Jalan Satu, Kedah', 1, '2025-06-19', 0, 1);
+
 -- --------------------------------------------------------
 
 --
@@ -267,6 +293,13 @@ CREATE TABLE `vendor_subscriptions` (
   `payment_amount` decimal(10,2) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `vendor_subscriptions`
+--
+
+INSERT INTO `vendor_subscriptions` (`id`, `vendor_id`, `tier_id`, `start_date`, `end_date`, `payment_amount`, `is_active`) VALUES
+(2, 3, 1, '2025-06-19', '2025-07-19', 0.00, 1);
 
 --
 -- Indexes for dumped tables
@@ -457,25 +490,25 @@ ALTER TABLE `staff_tasks`
 -- AUTO_INCREMENT for table `subscription_tiers`
 --
 ALTER TABLE `subscription_tiers`
-  MODIFY `tier_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `tier_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `vendors`
 --
 ALTER TABLE `vendors`
-  MODIFY `vendor_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `vendor_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `vendor_subscriptions`
 --
 ALTER TABLE `vendor_subscriptions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- Constraints for dumped tables
@@ -551,13 +584,6 @@ ALTER TABLE `staff_tasks`
 ALTER TABLE `vendors`
   ADD CONSTRAINT `vendors_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `vendors_ibfk_2` FOREIGN KEY (`subscription_tier_id`) REFERENCES `subscription_tiers` (`tier_id`);
-
---
--- Constraints for table `vendor_subscriptions`
---
-ALTER TABLE `vendor_subscriptions`
-  ADD CONSTRAINT `vendor_subscriptions_ibfk_1` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`vendor_id`),
-  ADD CONSTRAINT `vendor_subscriptions_ibfk_2` FOREIGN KEY (`tier_id`) REFERENCES `subscription_tiers` (`tier_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
