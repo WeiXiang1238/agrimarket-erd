@@ -4,7 +4,7 @@ if (session_status() == PHP_SESSION_NONE) session_start();
 
 $vendor_name = 'to the Vendor Dashboard'; // Default fallback
 
-$_SESSION['vendor_id'] = 1; //temporary
+$_SESSION['vendor_id'] = 3; //temporary
 // echo "Vendor ID from session: " . ($_SESSION['vendor_id'] ?? 'Not Set') . "<br>"; //debug line
 
 // Only run DB query if vendor_id is available
@@ -14,7 +14,7 @@ if (isset($_SESSION['vendor_id'])) {
     ob_end_clean(); // Clear the buffer
 
     // Assuming $vendor_id is already stored in session
-    $vendor_id = $_SESSION['vendor_id']?? 1;
+    $vendor_id = $_SESSION['vendor_id'];
 
     $vendorQuery = $conn->prepare("
         SELECT v.business_name 

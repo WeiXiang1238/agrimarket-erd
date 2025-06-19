@@ -7,7 +7,7 @@ include 'Db_Connect.php';
 ob_end_clean(); // Clear the buffer
 
 // Assuming vendor_id is stored in session
-$vendor_id = $_SESSION['vendor_id'] ?? 1;
+$vendor_id = $_SESSION['vendor_id'] ?? 3;
 
 // Get vendor summary data
 $productCount = $conn->query("SELECT COUNT(*) AS total FROM products WHERE vendor_id = $vendor_id AND is_archive = 0")->fetch_assoc()['total'];

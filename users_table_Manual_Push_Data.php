@@ -7,10 +7,10 @@ ob_start(); // Prevent "Connected successfully" from displaying
 include 'Db_Connect.php';
 ob_end_clean(); // Clear the buffer
 
-$name = 'vendor A';
+$name = 'Vendor A';
 $email = 'vendorA@example.com';
 $password = password_hash('123456', PASSWORD_DEFAULT); // Secure hashing
-$role = 'vendor';
+$role = 'admin';
 
 // Validate role
 $valid_roles = ['admin', 'vendor', 'customer', 'staff'];
