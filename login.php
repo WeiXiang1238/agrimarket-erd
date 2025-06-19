@@ -64,8 +64,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <title>Login</title>
     <style>
+        /* Flex container to control layout */
+        .container {
+            position: absolute;
+            top: 12%;
+            left: 75%;
+            width: 430px;
+            height: auto;
+            border: 0px solid #73AD21;
+        }
         .login-box {
-            max-width: 400px; margin: auto; background: white; padding: 30px;
+            max-width: 400px; margin: auto;  background: white; padding: 30px;
             border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         input[type=email], input[type=password] {
@@ -85,46 +94,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .logo{
             position: absolute;
-            top: 80px;
-            left: 10px;
+            top: 10%;
+            left: 35%;
             width: 100px;
             height: 100px;
             border: 0px solid #73AD21;
         }
+        body {
+            background-image: url('Image/Login/background.webp');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
     </style>
 </head>
 <body>
+    <!-- <div class="backgroundImage">
+        <img src="Image/Login/background.webp" alt="background image" style="width: 1000px; height: auto;">
+    </div> -->
     <div class="logo">
         <img src="Image/Login/Sow Smarter, Grow Faster, Sell Better.jpeg" alt="AgriMarket Logo" style="width: 500px; height: auto;">
     </div>
 
-    <div style="text-align: center;">
+    <div style="text-align: center;color:white;">
         <h2><i>Sow Smarter, Grow Faster, Sell Better <sub><small>by AgriMarket Solutions</small></sub></i></h2>
-        <h2>Login</h2>
+        <h2 style="text-align: right;margin-right:20%;">Login</h2>
 
     </div>
-    <div class="login-box">
-        <?php if ($message): ?>
-            <p style="color:red;"><?= htmlspecialchars($message) ?></p>
-        <?php endif; ?>
+    <div class="container">
+        <div class="login-box">
+            <?php if ($message): ?>
+                <p style="color:red;"><?= htmlspecialchars($message) ?></p>
+            <?php endif; ?>
 
-        <form method="POST" action="login.php">
-            <label>Email:</label><br>
-            <input type="email" name="email" required placeholder="email"><br><br>
+            <form method="POST" action="login.php">
+                <label>Email:</label><br>
+                <input type="email" name="email" required placeholder="email"><br><br>
 
-            <label>Password:</label><br>
-            <input type="password" name="password" required placeholder="password"><br><br>
+                <label>Password:</label><br>
+                <input type="password" name="password" required placeholder="password"><br><br>
 
-            <button type="submit">Login</button>
-        </form>
+                <button type="submit">Login</button>
+            </form>
 
-        <!-- <p>Don't have an account?</p> -->
-         <div style="text-align:right;">
-            <a href="register.php">
-                <!-- <button type="button" style="background-color: #3498db; color: white; padding: 10px 15px; border: none; border-radius: 4px;"> -->
-                <!-- <button type="button">Register New Account</button> -->
-                Create New Account
-            </a>
+            <!-- <p>Don't have an account?</p> -->
+            <div style="text-align:right;">
+                <a href="register.php">
+                    <!-- <button type="button" style="background-color: #3498db; color: white; padding: 10px 15px; border: none; border-radius: 4px;"> -->
+                    <!-- <button type="button">Register New Account</button> -->
+                    Create New Account
+                </a>
+            </div>
         </div>
     </div>
 </body>
