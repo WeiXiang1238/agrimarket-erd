@@ -110,9 +110,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
-    <!-- <div class="backgroundImage">
-        <img src="Image/Login/background.webp" alt="background image" style="width: 1000px; height: auto;">
-    </div> -->
     <div class="logo">
         <img src="Image/Login/Sow Smarter, Grow Faster, Sell Better.jpeg" alt="AgriMarket Logo" style="width: 500px; height: auto;">
     </div>
@@ -138,13 +135,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <button type="submit">Login</button>
             </form>
 
-            <!-- <p>Don't have an account?</p> -->
             <div style="text-align:right;">
-                <a href="register.php">
-                    <!-- <button type="button" style="background-color: #3498db; color: white; padding: 10px 15px; border: none; border-radius: 4px;"> -->
-                    <!-- <button type="button">Register New Account</button> -->
-                    Create New Account
-                </a>
+                <a href="register.php">Create New Account</a>
             </div>
         </div>
     </div>
