@@ -1,13 +1,20 @@
 <?php
 session_start();
 
+// Check if vendor_id is set in session, if not redirect to login
+if (!isset($_SESSION['vendor_id'])) {
+    header("Location: login.php");
+    exit;
+}
+$vendor_id = $_SESSION['vendor_id'];
+
 // Include your DB connection file
 ob_start(); // Prevent "Connected successfully" from displaying
 include 'Db_Connect.php';
 ob_end_clean(); // Clear the buffer
 
 // Assuming vendor_id is stored in session
-$vendor_id = $_SESSION['vendor_id'] ?? 3;
+// $vendor_id = $_SESSION['vendor_id'] ; ?? 3; //temporary for testing
 
 // Get vendor summary data
 $productCount = $conn->query("SELECT COUNT(*) AS total FROM products WHERE vendor_id = $vendor_id AND is_archive = 0")->fetch_assoc()['total'];
@@ -43,31 +50,77 @@ $subscription = $conn->query("
     <title>Vendor Dashboard</title>
     <style>
         body { font-family: Arial; margin: 2rem; }
-        .card { display: inline-block; width: 220px; padding: 1rem; margin: 1rem; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
+        .card { 
+            display: inline-block; 
+            width: 220px; 
+            padding: 1rem; 
+            margin: 1rem; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            background: #f9f9f9; 
+        }
         .card h3 { margin-top: 0; color: #333; }
+        a:link{
+            color: rgb(155, 161, 165);
+            text-decoration: underline;
+        }
+        a:hover{
+            color: rgb(9, 147, 240);
+        }
+        .logout-button {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            z-index: 999;
+            background-color:rgb(10, 111, 170);
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        .logout-button a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .logout-button a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
-<!-- To prevent any potential HTML injection if the name contains special characters (e.g., <, &, etc.). -->
-<!-- <h1>Welcome <?= htmlspecialchars($vendor_name) ?></h1> -->
-<?php include 'header.php'; ?>
+    <?php include 'header.php'; ?>
 
-<!-- Summary Cards -->
-<div class="card"><h3>🛒 Products</h3><p><?= $productCount ?></p></div>
-<div class="card"><h3>📦 Orders</h3><p><?= $orderCount ?></p></div>
-<div class="card"><h3>💰 Earnings</h3><p>RM <?= number_format($earnings, 2) ?></p></div>
-<div class="card"><h3>🔑 Tier</h3><p><?= $subscription['name'] ?? 'N/A' ?></p></div>
+    <!-- Logout Button -->
+    <div class="logout-button">
+        <a href="logout.php">🚪 Logout</a>
+    </div>
 
-<!-- Subscription Info -->
-<h2>📄 Subscription Details</h2>
-<ul>
-    <li>Tier: <?= $subscription['name'] ?? 'N/A' ?></li>
-    <li>Monthly Fee: RM <?= number_format($subscription['monthly_fee'] ?? 0, 2) ?></li>
-    <li>Active From: <?= $subscription['start_date'] ?? '-' ?> to <?= $subscription['end_date'] ?? '-' ?></li>
-</ul>
+    <!-- Summary Cards -->
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-start;">
+        <div class="card" onclick="location.href='product_list.php';" style="cursor: pointer;">
+            <h3>🛒 Products</h3>
+            <p>Total products: <?= $productCount ?></p>
+        </div>
+        <div class="card" onlick="location.href='order_list.php';" style="cursor: pointer;">
+            <h3>📦 Orders</h3>
+            <p>Total orders: <?= $orderCount ?></p>
+        </div>
+        <div class="card" onclick="location.href='earnings.php';" style="cursor: pointer;">
+            <h3>💰 Earnings</h3>
+            <p>Total earninig: RM <?= number_format($earnings, 2) ?></p>
+        </div>
+        <div class="card" style="width: auto;">
+            <h3>🔑 Tier</h3>
+            <li>Tier: <?= $subscription['name'] ?? 'N/A' ?></li>
+            <li>Monthly Fee: RM <?= number_format($subscription['monthly_fee'] ?? 0, 2) ?></li>
+            <li>Active From: <?= $subscription['start_date'] ?? '-' ?> to <?= $subscription['end_date'] ?? '-' ?></li>
+            <li><a href="subscription_plan.php">Change Subscription?</a></li>
+        </div>
+    </div>
 
-<!-- Optional: Add latest orders or product table here -->
 
+
+    <?php include 'footer.php'; ?>
 </body>
 </html>
