@@ -37,14 +37,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $vendorStmt->close();
             }
 
-            // Redirect based on role
-            if ($user['role'] === 'admin') {
-                header("Location: admin_dashboard.php");
-            } elseif ($user['role'] === 'vendor') {
-                header("Location: dashboard_vendor.php");
-            } else {
-                header("Location: user_dashboard.php"); // fallback
-            }
+            // Redirect to unified dashboard
+            header("Location: v1/dashboard/");
             exit;
         } else {
             $message = "❌ Invalid password.";
@@ -78,7 +72,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         input[type=email], input[type=password] {
-            width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc;
+            box-sizing: border-box;
+            width: 100%; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: 1px solid #ccc;
             border-radius: 4px;
         }
         input[type=submit] {
@@ -127,7 +125,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <form method="POST" action="login.php">
                 <label>Email:</label><br>
-                <input type="email" name="email" required placeholder="email"><br><br>
+                <input type="email" name="email" required placeholder="example@gmail.com"><br><br>
 
                 <label>Password:</label><br>
                 <input type="password" name="password" required placeholder="password"><br><br>
@@ -136,7 +134,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </form>
 
             <div style="text-align:right;">
-                <a href="register.php">Create New Account</a>
+                <a href="v1/auth/register/">Create New Account</a>
             </div>
         </div>
     </div>
