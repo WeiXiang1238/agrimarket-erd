@@ -1,3 +1,5 @@
+http://localhost/agrimarket-erd/v1/auth/login/
+
 [admin login]
 name: admin1
 email: admin1@agrimarket.com
