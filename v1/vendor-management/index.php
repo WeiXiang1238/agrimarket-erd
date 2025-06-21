@@ -140,8 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $vendorId = intval($_POST['vendor_id']);
             $status = intval($_POST['status']);
             
-            // Since the current schema doesn't have a status field, we'll use is_archive
-            $result = $vendorService->toggleVendorArchive($vendorId, $status, $currentUser['user_id']);
+            // Toggle is_active in users table for vendor
+            $result = $vendorService->toggleVendorStatus($vendorId, $status, $currentUser['user_id']);
             echo json_encode($result);
             break;
             
@@ -188,16 +188,18 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
             
             <!-- Dashboard Content -->
             <div class="dashboard-content">
-                <!-- Page Header -->
-                <div class="page-header">
-                    <div>
-                        <h2>Vendor Management</h2>
-                        <p>Manage vendors, subscriptions, and business profiles</p>
+                <!-- Page Header with Gradient -->
+                <div class="page-header-gradient">
+                    <div class="page-header">
+                        <div>
+                            <h2>Vendor Management</h2>
+                            <p>Manage vendors, subscriptions, and business profiles</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openCreateVendorModal()">
+                            <i class="fas fa-plus"></i>
+                            Add New Vendor
+                        </button>
                     </div>
-                    <button class="btn btn-primary" onclick="openCreateVendorModal()">
-                        <i class="fas fa-plus"></i>
-                        Add New Vendor
-                    </button>
                 </div>
 
                 <!-- Stats Cards -->
@@ -267,6 +269,11 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
                             <?php foreach ($businessTypes as $type): ?>
                             <option value="<?php echo $type['value']; ?>"><?php echo $type['label']; ?></option>
                             <?php endforeach; ?>
+                        </select>
+                        <select id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
                         </select>
                     </div>
                 </div>
@@ -526,6 +533,7 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
             formData.append('verification_status', document.getElementById('verificationFilter') ? document.getElementById('verificationFilter').value : '');
             formData.append('subscription_tier', document.getElementById('tierFilter') ? document.getElementById('tierFilter').value : '');
             formData.append('business_type', document.getElementById('businessTypeFilter') ? document.getElementById('businessTypeFilter').value : '');
+            formData.append('status', document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '');
             formData.append('csrf_token', '<?php echo $csrfToken; ?>');
 
             fetch('', {
@@ -569,7 +577,7 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
 
             data.vendors.forEach(vendor => {
                 const createdDate = new Date(vendor.created_at).toLocaleDateString();
-                const isArchived = vendor.is_archive == 1;
+                const isActive = vendor.is_active == 1;
                 
                 html += `
                     <tr>
@@ -579,8 +587,8 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
                         <td>${vendor.address}</td>
                         <td><span class="tier-badge ${vendor.subscription_tier || 'basic'}">${vendor.subscription_tier || 'Basic'}</span></td>
                         <td>
-                            <span class="status-badge status-${isArchived ? 'inactive' : 'active'}">
-                                ${isArchived ? 'Archived' : 'Active'}
+                            <span class="status-badge status-${isActive ? 'active' : 'inactive'}">
+                                ${isActive ? 'Active' : 'Inactive'}
                             </span>
                         </td>
                         <td>${createdDate}</td>
@@ -588,8 +596,8 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
                             <button class="btn-icon btn-primary" onclick="editVendor(${vendor.vendor_id})" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn-icon btn-warning" onclick="toggleVendorStatus(${vendor.vendor_id}, ${isArchived ? 0 : 1})" title="${isArchived ? 'Restore' : 'Archive'}">
-                                <i class="fas fa-${isArchived ? 'check' : 'archive'}"></i>
+                            <button class="btn-icon btn-warning" onclick="toggleVendorStatus(${vendor.vendor_id}, ${isActive ? 0 : 1})" title="${isActive ? 'Deactivate' : 'Activate'}">
+                                <i class="fas fa-${isActive ? 'ban' : 'check'}"></i>
                             </button>
                             <button class="btn-icon btn-danger" onclick="deleteVendor(${vendor.vendor_id})" title="Delete">
                                 <i class="fas fa-trash"></i>
@@ -948,7 +956,7 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
         }
 
         function toggleVendorStatus(vendorId, newStatus) {
-            if (confirm(`Are you sure you want to ${newStatus ? 'archive' : 'restore'} this vendor?`)) {
+            if (confirm(`Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} this vendor?`)) {
                 const formData = new FormData();
                 formData.append('action', 'toggle_vendor_status');
                 formData.append('vendor_id', vendorId);
@@ -1003,7 +1011,7 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
         }
 
         // Filter changes
-        ['verificationFilter', 'tierFilter', 'businessTypeFilter'].forEach(filterId => {
+        ['verificationFilter', 'tierFilter', 'businessTypeFilter', 'statusFilter'].forEach(filterId => {
             const element = document.getElementById(filterId);
             if (element) {
                 element.addEventListener('change', () => loadVendors(1));

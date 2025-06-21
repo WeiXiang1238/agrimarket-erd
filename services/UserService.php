@@ -49,7 +49,7 @@ class UserService
      */
     public function register($userData)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         
         try {
             $db->beginTransaction();
@@ -108,7 +108,7 @@ class UserService
      */
     public function updatePassword($userId, $newPassword)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
         
         $stmt = $db->prepare("UPDATE users SET password = ? WHERE user_id = ?");
@@ -120,7 +120,7 @@ class UserService
      */
     public function getUsersByRole($role)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         $stmt = $db->prepare("
             SELECT user_id, name, email, role, created_at 
             FROM users 
@@ -136,7 +136,7 @@ class UserService
      */
     public function updateProfile($userId, $profileData)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         
         // Remove sensitive fields
         unset($profileData['password'], $profileData['user_id']);
@@ -160,7 +160,7 @@ class UserService
      */
     public function getUserWithPermissions($userId)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         
         // Get user data
         $stmt = $db->prepare("SELECT * FROM users WHERE user_id = ? AND is_archive = 0");
@@ -201,7 +201,7 @@ class UserService
      */
     public function hasPermission($userId, $permissionName)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         
         $stmt = $db->prepare("
             SELECT COUNT(*) 
@@ -220,7 +220,7 @@ class UserService
      */
     public function assignRole($userId, $roleId)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         
         // Check if role assignment already exists
         $stmt = $db->prepare("SELECT user_role_id FROM user_roles WHERE user_id = ? AND role_id = ?");
@@ -242,7 +242,7 @@ class UserService
      */
     public function removeRole($userId, $roleId)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         $stmt = $db->prepare("UPDATE user_roles SET is_active = 0 WHERE user_id = ? AND role_id = ?");
         return $stmt->execute([$userId, $roleId]);
     }
@@ -252,7 +252,7 @@ class UserService
      */
     private function getRoleIdByName($roleName)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         $stmt = $db->prepare("SELECT role_id FROM roles WHERE role_name = ? AND is_active = 1");
         $stmt->execute([$roleName]);
         $result = $stmt->fetch();
@@ -273,7 +273,7 @@ class UserService
      */
     public function searchUsers($searchTerm, $limit = 20)
     {
-        $db = $this->userModel->getDb();
+        $db = $this->db;
         $searchTerm = "%{$searchTerm}%";
         
         $stmt = $db->prepare("

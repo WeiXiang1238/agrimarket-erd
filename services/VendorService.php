@@ -58,6 +58,11 @@ class VendorService
             $whereConditions[] = "1 = 1";
         }
         
+        if (isset($filters['status']) && $filters['status'] !== '') {
+            $whereConditions[] = "u.is_active = ?";
+            $params[] = $filters['status'];
+        }
+        
         $whereClause = implode(' AND ', $whereConditions);
         
         // Get total count
@@ -84,7 +89,8 @@ class VendorService
                 'Not specified' as business_type,
                 0.00 as total_sales,
                 0 as rating,
-                0 as total_reviews
+                0 as total_reviews,
+                u.is_active as is_active
             FROM vendors v
             JOIN users u ON v.user_id = u.user_id
             LEFT JOIN subscription_tiers st ON v.subscription_tier_id = st.tier_id
@@ -106,6 +112,74 @@ class VendorService
         ];
     }
     
+    /**
+     * Register new vendor with user account creation (for public registration)
+     */
+    public function registerVendor($vendorData)
+    {
+        try {
+            // Comprehensive validation for registration
+            $validation = $this->validateVendorRegistrationData($vendorData);
+            if (!$validation['valid']) {
+                return ['success' => false, 'message' => $validation['message']];
+            }
+            
+            // Check if email already exists
+            if ($this->emailExists($vendorData['business_email'])) {
+                return ['success' => false, 'message' => 'Email already exists'];
+            }
+            
+            $this->db->beginTransaction();
+            
+            // Create user account
+            $userData = [
+                'name' => $vendorData['contact_person'],
+                'email' => $vendorData['business_email'],
+                'password' => $vendorData['password'],
+                'role' => 'vendor',
+                'phone' => $vendorData['business_phone'] ?? null
+            ];
+            
+            $userId = $this->createUserAccount($userData);
+            if (!$userId) {
+                throw new Exception("Failed to create user account");
+            }
+            
+            // Create vendor profile
+            $stmt = $this->db->prepare("
+                INSERT INTO vendors (
+                    user_id, business_name, contact_number, address, 
+                    website_url, description, subscription_tier_id, tier_id, registration_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([
+                $userId,
+                trim($vendorData['business_name']),
+                $vendorData['business_phone'],
+                $vendorData['business_address'],
+                $vendorData['website_url'] ?? null,
+                $vendorData['description'] ?? null,
+                $this->getSubscriptionTierId($vendorData['subscription_tier'] ?? 'basic'),
+                1  // Default tier ID
+            ]);
+            
+            $vendorId = $this->db->lastInsertId();
+            
+            $this->db->commit();
+            
+            return [
+                'success' => true,
+                'vendor_id' => $vendorId,
+                'user_id' => $userId,
+                'message' => 'Vendor account created successfully'
+            ];
+            
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => 'Registration failed: ' . $e->getMessage()];
+        }
+    }
+
     /**
      * Create new vendor with automatic user creation
      */
@@ -357,6 +431,42 @@ class VendorService
         }
     }
     
+    /**
+     * Toggle vendor active status in users table
+     */
+    public function toggleVendorStatus($vendorId, $isActive, $adminId = null)
+    {
+        try {
+            $this->db->beginTransaction();
+            
+            // Update is_active in users table for the vendor
+            $stmt = $this->db->prepare("
+                UPDATE users u
+                JOIN vendors v ON u.user_id = v.user_id
+                SET u.is_active = ? 
+                WHERE v.vendor_id = ?
+            ");
+            $result = $stmt->execute([$isActive, $vendorId]);
+            
+            if ($result && $adminId) {
+                $action = $isActive ? "Vendor activated" : "Vendor deactivated";
+                $this->logVendorAction($vendorId, $adminId, $action);
+            }
+            
+            $this->db->commit();
+            
+            return [
+                'success' => $result,
+                'message' => $result ? 
+                    ($isActive ? 'Vendor activated successfully' : 'Vendor deactivated successfully') :
+                    'Failed to update vendor status'
+            ];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => 'Failed to update vendor status: ' . $e->getMessage()];
+        }
+    }
+
     /**
      * Toggle vendor archive status
      */
@@ -620,22 +730,55 @@ class VendorService
             }
             
             $stmt = $this->db->prepare("
-                INSERT INTO users (name, email, password, role, is_archive, created_at)
-                VALUES (?, ?, ?, ?, 0, NOW())
+                INSERT INTO users (name, email, phone, password, role, is_active, is_archive, created_at)
+                VALUES (?, ?, ?, ?, ?, 1, 0, NOW())
             ");
             $stmt->execute([
                 $userData['name'],
                 $userData['email'],
+                $userData['phone'] ?? null,
                 password_hash($userData['password'], PASSWORD_DEFAULT),
                 $userData['role']
             ]);
             
-            return $this->db->lastInsertId();
+            $userId = $this->db->lastInsertId();
+            
+            // Assign role in user_roles table
+            $this->assignUserRole($userId, $userData['role']);
+            
+            return $userId;
         } catch (Exception $e) {
             throw new Exception("Failed to create user: " . $e->getMessage());
         }
     }
     
+    /**
+     * Assign role to user in user_roles table
+     */
+    private function assignUserRole($userId, $roleName)
+    {
+        try {
+            // Get role ID
+            $stmt = $this->db->prepare("SELECT role_id FROM roles WHERE role_name = ? AND is_active = 1");
+            $stmt->execute([$roleName]);
+            $role = $stmt->fetch();
+            
+            if (!$role) {
+                throw new Exception("Role '$roleName' not found");
+            }
+            
+            // Assign role to user
+            $stmt = $this->db->prepare("
+                INSERT INTO user_roles (user_id, role_id, is_active) 
+                VALUES (?, ?, 1)
+            ");
+            $stmt->execute([$userId, $role['role_id']]);
+            
+        } catch (Exception $e) {
+            throw new Exception("Failed to assign role: " . $e->getMessage());
+        }
+    }
+
     /**
      * Generate secure temporary password
      */
@@ -679,6 +822,78 @@ class VendorService
         }
     }
     
+    /**
+     * Check if email already exists
+     */
+    private function emailExists($email)
+    {
+        $stmt = $this->db->prepare("SELECT user_id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * Validation for vendor registration (public registration form)
+     */
+    private function validateVendorRegistrationData($vendorData)
+    {
+        $errors = [];
+        
+        // Validate Contact Person Name
+        $contactPerson = trim($vendorData['contact_person'] ?? '');
+        if (empty($contactPerson)) {
+            $errors[] = 'Contact person name is required';
+        } elseif (strlen($contactPerson) < 2 || strlen($contactPerson) > 100) {
+            $errors[] = 'Contact person name must be between 2 and 100 characters';
+        }
+        
+        // Validate Business Name
+        $businessName = trim($vendorData['business_name'] ?? '');
+        if (empty($businessName)) {
+            $errors[] = 'Business name is required';
+        } elseif (strlen($businessName) < 2 || strlen($businessName) > 100) {
+            $errors[] = 'Business name must be between 2 and 100 characters';
+        }
+        
+        // Validate Business Email
+        $businessEmail = trim($vendorData['business_email'] ?? '');
+        if (empty($businessEmail)) {
+            $errors[] = 'Business email is required';
+        } elseif (!filter_var($businessEmail, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Please enter a valid business email address';
+        }
+        
+        // Validate Business Phone
+        $businessPhone = trim($vendorData['business_phone'] ?? '');
+        if (empty($businessPhone)) {
+            $errors[] = 'Business phone is required';
+        } elseif (!preg_match('/^[+]?[0-9\s\-\(\)]{7,20}$/', $businessPhone)) {
+            $errors[] = 'Please enter a valid phone number';
+        }
+        
+        // Validate Business Address
+        $businessAddress = trim($vendorData['business_address'] ?? '');
+        if (empty($businessAddress)) {
+            $errors[] = 'Business address is required';
+        } elseif (strlen($businessAddress) < 10) {
+            $errors[] = 'Business address must be at least 10 characters';
+        }
+        
+        // Validate Password
+        $password = $vendorData['password'] ?? '';
+        if (empty($password)) {
+            $errors[] = 'Password is required';
+        } elseif (strlen($password) < 6) {
+            $errors[] = 'Password must be at least 6 characters long';
+        }
+        
+        if (!empty($errors)) {
+            return ['valid' => false, 'message' => implode('. ', $errors)];
+        }
+        
+        return ['valid' => true];
+    }
+
     /**
      * Enhanced vendor data validation for auto-user creation
      */
