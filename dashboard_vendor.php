@@ -72,7 +72,7 @@ $subscription = $conn->query("
             top: 20px;
             right: 30px;
             z-index: 999;
-            background-color:rgb(10, 111, 170);
+            background-color:rgb(184, 97, 118);
             padding: 8px 12px;
             border-radius: 5px;
         }
