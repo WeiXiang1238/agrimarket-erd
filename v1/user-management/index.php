@@ -1,6 +1,7 @@
 <?php
+// Only display errors for development - disable for production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
@@ -18,6 +19,11 @@ $csrfToken = $authService->generateCSRFToken();
 
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // Clear any output buffer to prevent HTML before JSON
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
     header('Content-Type: application/json');
     
     if (!$authService->validateCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -25,19 +31,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
     
-    switch ($_POST['action']) {
-        case 'get_users':
-            $page = intval($_POST['page'] ?? 1);
-            $limit = intval($_POST['limit'] ?? 10);
-            $filters = [
-                'search' => $_POST['search'] ?? '',
-                'role' => $_POST['role'] ?? '',
-                'status' => $_POST['status'] ?? ''
-            ];
-            
-            $result = $userService->getPaginatedUsers($page, $limit, $filters);
-            echo json_encode($result);
-            exit;
+    try {
+        switch ($_POST['action']) {
+            case 'get_users':
+                $page = intval($_POST['page'] ?? 1);
+                $limit = intval($_POST['limit'] ?? 10);
+                $filters = [
+                    'search' => $_POST['search'] ?? '',
+                    'role' => $_POST['role'] ?? '',
+                    'status' => $_POST['status'] ?? ''
+                ];
+                
+                $result = $userService->getPaginatedUsers($page, $limit, $filters);
+                echo json_encode($result);
+                exit;
             
         case 'create_user':
             $userData = [
@@ -77,6 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $result = $userService->deleteUser($userId, $currentUser['user_id']);
             echo json_encode($result);
             exit;
+            
+        default:
+            echo json_encode(['success' => false, 'message' => 'Invalid action']);
+            exit;
+    }
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
+        exit;
     }
 }
 
@@ -90,6 +105,7 @@ $userStats = $userService->getUserStatistics();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - AgriMarket Solutions</title>
+    <link rel="stylesheet" href="../components/main.css">
     <link rel="stylesheet" href="../dashboard/style.css">
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -215,7 +231,7 @@ $userStats = $userService->getUserStatistics();
     <div id="userModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">Add New User</h3>
+                <h3 id="modalTitle"><i class="fas fa-user-plus"></i>Add New User</h3>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
@@ -226,27 +242,50 @@ $userStats = $userService->getUserStatistics();
                     
                     <div class="form-group">
                         <label>Name *</label>
-                        <input type="text" id="userName" name="name" required>
+                        <input type="text" id="userName" name="name" required 
+                               minlength="2" maxlength="100" pattern="[a-zA-Z\s\-\.']+" 
+                               placeholder="Enter full name">
+                        <div class="error-message" id="userNameError"></div>
+                        <small class="help-text">Full name (2-100 characters, letters, spaces, hyphens, periods, apostrophes)</small>
                     </div>
                     
                     <div class="form-group">
                         <label>Email *</label>
-                        <input type="email" id="userEmail" name="email" required>
+                        <input type="email" id="userEmail" name="email" required 
+                               maxlength="100" placeholder="user@example.com">
+                        <div class="error-message" id="userEmailError"></div>
+                        <small class="help-text">Valid email address (max 100 characters)</small>
                     </div>
                     
                     <div class="form-group" id="passwordGroup">
                         <label>Password *</label>
-                        <input type="password" id="userPassword" name="password" required>
+                        <input type="password" id="userPassword" name="password" required 
+                               minlength="8" maxlength="255" 
+                               pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                               placeholder="Enter secure password">
+                        <div class="error-message" id="userPasswordError"></div>
+                        <small class="help-text">Minimum 8 characters with uppercase, lowercase, number, and special character</small>
+                        <div class="password-strength" id="passwordStrength"></div>
+                    </div>
+                    
+                    <div class="form-group" id="confirmPasswordGroup">
+                        <label>Confirm Password *</label>
+                        <input type="password" id="confirmPassword" name="confirm_password" required 
+                               minlength="8" maxlength="255" placeholder="Re-enter password">
+                        <div class="error-message" id="confirmPasswordError"></div>
+                        <small class="help-text">Must match the password above</small>
                     </div>
                     
                     <div class="form-group">
-                        <label>Role</label>
-                        <select id="userRole" name="role">
+                        <label>Role *</label>
+                        <select id="userRole" name="role" required>
+                            <option value="">Select a role...</option>
                             <option value="customer">Customer</option>
-                            <option value="vendor">Vendor</option>
                             <option value="staff">Staff</option>
                             <option value="admin">Admin</option>
                         </select>
+                        <div class="error-message" id="userRoleError"></div>
+                        <small class="help-text">Select user role and permissions</small>
                     </div>
                     
                     <div class="form-actions">
@@ -265,6 +304,93 @@ $userStats = $userService->getUserStatistics();
         // Load users on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadUsers();
+            
+            // Add real-time validation event listeners
+            const passwordInput = document.getElementById('userPassword');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('input', function() {
+                    checkPasswordStrength(this.value);
+                });
+                
+                passwordInput.addEventListener('blur', function() {
+                    if (this.value) {
+                        const validation = validatePassword(this.value);
+                        if (!validation.isValid) {
+                            showUserError('userPasswordError', validation.message);
+                        } else {
+                            clearUserError('userPasswordError');
+                        }
+                    } else {
+                        clearUserError('userPasswordError');
+                    }
+                });
+            }
+            
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('blur', function() {
+                    const password = document.getElementById('userPassword').value;
+                    if (this.value && password && this.value !== password) {
+                        showUserError('confirmPasswordError', 'Passwords do not match');
+                    } else if (this.value && password && this.value === password) {
+                        clearUserError('confirmPasswordError');
+                    } else if (!this.value) {
+                        clearUserError('confirmPasswordError');
+                    }
+                });
+            }
+            
+            // Add email validation on blur
+            const emailInput = document.getElementById('userEmail');
+            if (emailInput) {
+                emailInput.addEventListener('blur', function() {
+                    const email = this.value.trim();
+                    if (email) {
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(email)) {
+                            showUserError('userEmailError', 'Please enter a valid email address');
+                        } else if (email.length > 100) {
+                            showUserError('userEmailError', 'Email must be less than 100 characters');
+                        } else {
+                            clearUserError('userEmailError');
+                        }
+                    } else {
+                        clearUserError('userEmailError');
+                    }
+                });
+            }
+            
+            // Add name validation on blur
+            const nameInput = document.getElementById('userName');
+            if (nameInput) {
+                nameInput.addEventListener('blur', function() {
+                    const name = this.value.trim();
+                    if (name && (name.length < 2 || name.length > 100)) {
+                        showUserError('userNameError', 'Name must be between 2 and 100 characters');
+                    } else if (name && !/^[a-zA-Z\s\-\.']+$/.test(name)) {
+                        showUserError('userNameError', 'Name contains invalid characters');
+                    } else if (name) {
+                        clearUserError('userNameError');
+                    } else {
+                        clearUserError('userNameError');
+                    }
+                });
+            }
+            
+            // Add role validation on blur
+            const roleInput = document.getElementById('userRole');
+            if (roleInput) {
+                roleInput.addEventListener('blur', function() {
+                    if (this.value && !['customer', 'vendor', 'staff', 'admin'].includes(this.value)) {
+                        showUserError('userRoleError', 'Please select a valid role');
+                    } else if (this.value) {
+                        clearUserError('userRoleError');
+                    } else {
+                        clearUserError('userRoleError');
+                    }
+                });
+            }
         });
 
         // Load users function
@@ -282,10 +408,17 @@ $userStats = $userService->getUserStatistics();
 
             fetch('', {
                 method: 'POST',
-                body: formData
+                body: formData,
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log(response);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log(data);
                 if (data.success) {
                     displayUsers(data);
                 } else {
@@ -306,12 +439,12 @@ $userStats = $userService->getUserStatistics();
                 <table class="users-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
+                            <th>NAME</th>
+                            <th>EMAIL</th>
+                            <th>ROLE</th>
+                            <th>STATUS</th>
+                            <th>CREATED</th>
+                            <th>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -373,25 +506,45 @@ $userStats = $userService->getUserStatistics();
         // Modal functions
         function openCreateModal() {
             isEditing = false;
-            document.getElementById('modalTitle').textContent = 'Add New User';
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus"></i>Add New User';
             document.getElementById('userForm').reset();
             document.getElementById('userId').value = '';
             document.getElementById('passwordGroup').style.display = 'block';
+            document.getElementById('confirmPasswordGroup').style.display = 'block';
             document.getElementById('userPassword').required = true;
+            document.getElementById('confirmPassword').required = true;
             document.getElementById('modalMessage').innerHTML = '';
+            document.getElementById('passwordStrength').innerHTML = '';
+            clearUserErrors();
+            
+            // Reset all form groups to neutral state (no error or success styling)
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error', 'success');
+            });
+            
             document.getElementById('userModal').style.display = 'block';
         }
 
         function editUser(userId, name, email, role) {
             isEditing = true;
-            document.getElementById('modalTitle').textContent = 'Edit User';
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-edit"></i>Edit User';
             document.getElementById('userId').value = userId;
             document.getElementById('userName').value = name;
             document.getElementById('userEmail').value = email;
             document.getElementById('userRole').value = role;
             document.getElementById('passwordGroup').style.display = 'none';
+            document.getElementById('confirmPasswordGroup').style.display = 'none';
             document.getElementById('userPassword').required = false;
+            document.getElementById('confirmPassword').required = false;
             document.getElementById('modalMessage').innerHTML = '';
+            document.getElementById('passwordStrength').innerHTML = '';
+            clearUserErrors();
+            
+            // Reset all form groups to neutral state (no error or success styling)
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error', 'success');
+            });
+            
             document.getElementById('userModal').style.display = 'block';
         }
 
@@ -399,9 +552,201 @@ $userStats = $userService->getUserStatistics();
             document.getElementById('userModal').style.display = 'none';
         }
 
+        // Form validation functions
+        function validateUserForm() {
+            let isValid = true;
+            clearUserErrors();
+            
+            // Validate Name
+            const name = document.getElementById('userName').value.trim();
+            if (!name) {
+                showUserError('userNameError', 'Name is required');
+                isValid = false;
+            } else if (name.length < 2) {
+                showUserError('userNameError', 'Name must be at least 2 characters');
+                isValid = false;
+            } else if (name.length > 100) {
+                showUserError('userNameError', 'Name must be less than 100 characters');
+                isValid = false;
+            } else if (!/^[a-zA-Z\s\-\.']+$/.test(name)) {
+                showUserError('userNameError', 'Name contains invalid characters');
+                isValid = false;
+            }
+            
+            // Validate Email
+            const email = document.getElementById('userEmail').value.trim();
+            if (!email) {
+                showUserError('userEmailError', 'Email is required');
+                isValid = false;
+            } else {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showUserError('userEmailError', 'Please enter a valid email address');
+                    isValid = false;
+                } else if (email.length > 100) {
+                    showUserError('userEmailError', 'Email must be less than 100 characters');
+                    isValid = false;
+                }
+            }
+            
+            // Validate Password (only for new users)
+            if (!isEditing) {
+                const password = document.getElementById('userPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                if (!password) {
+                    showUserError('userPasswordError', 'Password is required');
+                    isValid = false;
+                } else {
+                    const passwordValidation = validatePassword(password);
+                    if (!passwordValidation.isValid) {
+                        showUserError('userPasswordError', passwordValidation.message);
+                        isValid = false;
+                    }
+                }
+                
+                if (!confirmPassword) {
+                    showUserError('confirmPasswordError', 'Please confirm your password');
+                    isValid = false;
+                } else if (password !== confirmPassword) {
+                    showUserError('confirmPasswordError', 'Passwords do not match');
+                    isValid = false;
+                }
+            }
+            
+            // Validate Role
+            const role = document.getElementById('userRole').value;
+            if (!role) {
+                showUserError('userRoleError', 'Please select a role');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        function validatePassword(password) {
+            if (password.length < 8) {
+                return { isValid: false, message: 'Password must be at least 8 characters long' };
+            }
+            if (password.length > 255) {
+                return { isValid: false, message: 'Password must be less than 255 characters' };
+            }
+            if (!/(?=.*[a-z])/.test(password)) {
+                return { isValid: false, message: 'Password must contain at least one lowercase letter' };
+            }
+            if (!/(?=.*[A-Z])/.test(password)) {
+                return { isValid: false, message: 'Password must contain at least one uppercase letter' };
+            }
+            if (!/(?=.*\d)/.test(password)) {
+                return { isValid: false, message: 'Password must contain at least one number' };
+            }
+            if (!/(?=.*[@$!%*?&])/.test(password)) {
+                return { isValid: false, message: 'Password must contain at least one special character (@$!%*?&)' };
+            }
+            return { isValid: true, message: 'Password is strong' };
+        }
+        
+        function checkPasswordStrength(password) {
+            const strengthIndicator = document.getElementById('passwordStrength');
+            if (!password) {
+                strengthIndicator.innerHTML = '';
+                return;
+            }
+            
+            let strength = 0;
+            let feedback = [];
+            
+            if (password.length >= 8) strength++;
+            else feedback.push('At least 8 characters');
+            
+            if (/(?=.*[a-z])/.test(password)) strength++;
+            else feedback.push('One lowercase letter');
+            
+            if (/(?=.*[A-Z])/.test(password)) strength++;
+            else feedback.push('One uppercase letter');
+            
+            if (/(?=.*\d)/.test(password)) strength++;
+            else feedback.push('One number');
+            
+            if (/(?=.*[@$!%*?&])/.test(password)) strength++;
+            else feedback.push('One special character');
+            
+            const strengthLevels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+            const strengthColors = ['#ff4444', '#ff8800', '#ffcc00', '#88cc00', '#00cc44'];
+            
+            strengthIndicator.innerHTML = `
+                <div class="strength-bar">
+                    <div class="strength-fill" style="width: ${(strength / 5) * 100}%; background-color: ${strengthColors[strength - 1] || '#ccc'}"></div>
+                </div>
+                <div class="strength-text" style="color: ${strengthColors[strength - 1] || '#666'}">
+                    ${strengthLevels[strength - 1] || 'Very Weak'}
+                    ${feedback.length > 0 ? ' - Missing: ' + feedback.join(', ') : ''}
+                </div>
+            `;
+        }
+        
+        function showUserError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+                errorElement.style.display = 'block';
+                
+                // Add error state to form group
+                const formGroup = errorElement.closest('.form-group');
+                if (formGroup) {
+                    formGroup.classList.add('error');
+                    formGroup.classList.remove('success');
+                }
+            }
+        }
+        
+        function clearUserError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            if (errorElement) {
+                errorElement.classList.remove('show');
+                errorElement.style.display = 'none';
+                
+                // Remove error state from form group (return to neutral state)
+                const formGroup = errorElement.closest('.form-group');
+                if (formGroup) {
+                    formGroup.classList.remove('error', 'success');
+                }
+            }
+        }
+        
+        function clearUserErrors() {
+            const errorElements = ['userNameError', 'userEmailError', 'userPasswordError', 
+                                'confirmPasswordError', 'userRoleError'];
+            errorElements.forEach(id => {
+                clearUserError(id);
+            });
+            
+            // Remove all form group states
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('error', 'success');
+            });
+        }
+        
         function saveUser() {
+            // Clear previous messages
+            document.getElementById('modalMessage').innerHTML = '';
+            
+            // Validate form
+            if (!validateUserForm()) {
+                document.getElementById('modalMessage').innerHTML = 
+                    '<div class="error">Please fix the errors above</div>';
+                return;
+            }
+            
             const formData = new FormData(document.getElementById('userForm'));
             formData.append('action', isEditing ? 'update_user' : 'create_user');
+
+            // Show loading state
+            const saveButton = document.querySelector('#userForm .btn-primary');
+            const originalText = saveButton.textContent;
+            saveButton.textContent = 'Saving...';
+            saveButton.disabled = true;
 
             fetch('', {
                 method: 'POST',
@@ -424,7 +769,12 @@ $userStats = $userService->getUserStatistics();
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('modalMessage').innerHTML = 
-                    '<div class="error">Error saving user</div>';
+                    '<div class="error">Error saving user. Please try again.</div>';
+            })
+            .finally(() => {
+                // Reset button state
+                saveButton.textContent = originalText;
+                saveButton.disabled = false;
             });
         }
 

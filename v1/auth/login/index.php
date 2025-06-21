@@ -44,6 +44,7 @@ $csrfToken = $authService->generateCSRFToken();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AgriMarket Solutions</title>
+    <link rel="stylesheet" href="../../components/main.css">
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -75,7 +76,7 @@ $csrfToken = $authService->generateCSRFToken();
             <form class="login-form" method="POST" action="">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                 
-                <div class="form-group">
+                <div class="form-group mb-3">
                     <label for="email">Email Address</label>
                     <div class="input-group">
                         <i class="fas fa-envelope"></i>

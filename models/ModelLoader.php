@@ -23,6 +23,7 @@ class ModelLoader
         'Customer' => 'Customer.php',
         'Vendor' => 'Vendor.php',
         'Staff' => 'Staff.php',
+        'StaffTask' => 'StaffTask.php',
         
         // Product Management
         'Product' => 'Product.php',
@@ -43,6 +44,14 @@ class ModelLoader
         'PaymentMethod' => 'PaymentMethod.php',
         'Payment' => 'Payment.php',
         
+        // Promotions and Discounts
+        'PromoCode' => 'PromoCode.php',
+        'PromoCodeUsage' => 'PromoCodeUsage.php',
+        
+        // Subscriptions
+        'SubscriptionTier' => 'SubscriptionTier.php',
+        'VendorSubscription' => 'VendorSubscription.php',
+        
         // Reviews and Ratings
         'Review' => 'Review.php',
         'VendorReview' => 'VendorReview.php',
@@ -55,7 +64,6 @@ class ModelLoader
         'VendorSetting' => 'VendorSetting.php',
         
         // Analytics and Tracking
-        'Analytics' => 'Analytics.php',
         'SearchLog' => 'SearchLog.php',
         'PageVisit' => 'PageVisit.php',
         'AuditLog' => 'AuditLog.php'
@@ -104,15 +112,17 @@ class ModelLoader
     {
         return [
             'User Management' => ['User', 'Role', 'Permission', 'UserRole', 'RolePermission'],
-            'User Types' => ['Customer', 'Vendor', 'Staff'],
+            'User Types' => ['Customer', 'Vendor', 'Staff', 'StaffTask'],
             'Product Management' => ['Product', 'ProductCategory', 'ProductImage', 'ProductAttribute'],
             'Order Management' => ['Order', 'OrderItem', 'ShoppingCart'],
             'Customer Data' => ['CustomerAddress', 'CustomerPreference'],
             'Payment System' => ['PaymentMethod', 'Payment'],
+            'Promotions and Discounts' => ['PromoCode', 'PromoCodeUsage'],
+            'Subscriptions' => ['SubscriptionTier', 'VendorSubscription'],
             'Reviews and Ratings' => ['Review', 'VendorReview'],
             'Notifications' => ['Notification', 'NotificationSetting'],
             'Vendor Settings' => ['VendorSetting'],
-            'Analytics and Tracking' => ['Analytics', 'SearchLog', 'PageVisit', 'AuditLog']
+            'Analytics and Tracking' => ['SearchLog', 'PageVisit', 'AuditLog']
         ];
     }
     

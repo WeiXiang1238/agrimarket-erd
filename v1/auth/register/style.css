@@ -1,12 +1,7 @@
-/* Reset and Base Styles */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* Register Specific Styles */
 
+/* Custom body styling for register page */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     display: flex;
@@ -14,7 +9,7 @@ body {
     justify-content: center;
     overflow-x: hidden;
     position: relative;
-    padding: 20px 0;
+    padding: 1.25rem 0;
 }
 
 /* Background Animation */
@@ -76,18 +71,18 @@ body {
     z-index: 1;
     width: 100%;
     max-width: 500px;
-    padding: 20px;
+    padding: 1.25rem;
 }
 
 .register-card {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 40px;
+    border-radius: 1.25rem;
+    padding: 2.5rem;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     animation: slideUp 0.6s ease-out;
-    margin: 20px 0;
+    margin: 1.25rem 0;
 }
 
 @keyframes slideUp {
@@ -104,15 +99,15 @@ body {
 /* Header */
 .register-header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 2rem;
 }
 
 .logo {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 0.625rem;
+    margin-bottom: 0.625rem;
 }
 
 .logo i {
@@ -138,59 +133,22 @@ body {
 
 .register-header p {
     color: #666;
-    font-size: 0.95rem;
-    margin-bottom: 10px;
-}
-
-
-
-/* Alerts */
-.alert {
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.9rem;
-    transition: opacity 0.3s ease;
-}
-
-.alert-error {
-    background: #ffebee;
-    color: #c62828;
-    border: 1px solid #ffcdd2;
-}
-
-.alert-success {
-    background: #e8f5e8;
-    color: #2e7d32;
-    border: 1px solid #c8e6c9;
-}
-
-.alert i {
-    font-size: 1.1rem;
+    font-size: 0.875rem;
+    margin-bottom: 0.625rem;
 }
 
 /* Form Styles */
 .register-form {
-    margin-bottom: 30px;
+    margin-bottom: 2rem;
 }
 
 .form-row {
-    margin-bottom: 20px;
+    margin-bottom: 1.25rem;
 }
 
+/* Using global form classes from main.css with custom margins */
 .form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: #333;
-    font-weight: 500;
-    font-size: 0.9rem;
+    margin-bottom: 1rem;
 }
 
 .input-group {
@@ -201,7 +159,7 @@ body {
 
 .input-group i {
     position: absolute;
-    left: 15px;
+    left: 0.9375rem;
     color: #999;
     font-size: 1rem;
     z-index: 2;
@@ -210,16 +168,16 @@ body {
 .input-group input,
 .input-group select {
     width: 100%;
-    padding: 15px 15px 15px 45px;
+    padding: 0.9375rem 0.9375rem 0.9375rem 2.8125rem;
     border: 2px solid #e0e0e0;
-    border-radius: 10px;
+    border-radius: 0.625rem;
     font-size: 1rem;
     transition: all 0.3s ease;
     background: white;
 }
 
 .input-group select {
-    padding-left: 45px;
+    padding-left: 2.8125rem;
     cursor: pointer;
 }
 
@@ -232,15 +190,14 @@ body {
 
 .password-toggle {
     position: absolute;
-    right: 15px;
+    right: 3rem;
+    top: 1.25rem;
     background: none;
     border: none;
     color: #999;
     cursor: pointer;
-    padding: 5px;
     font-size: 1rem;
     transition: color 0.3s ease;
-    z-index: 3;
 }
 
 .password-toggle:hover {
@@ -248,57 +205,57 @@ body {
 }
 
 .help-text {
+    font-size: 0.75rem;
     color: #666;
-    font-size: 0.8rem;
-    margin-top: 5px;
-    display: block;
+    margin-top: 0.25rem;
+    margin-left: 0.25rem;
 }
 
 /* Form Options */
 .form-options {
-    margin-bottom: 25px;
+    margin-bottom: 1.5625rem;
 }
 
-/* Custom Checkbox */
 .checkbox-container {
-    display: flex;
-    align-items: flex-start;
+    position: relative;
+    padding-left: 1.5625rem;
     cursor: pointer;
-    font-size: 0.9rem;
     color: #666;
-    user-select: none;
+    font-size: 0.875rem;
     line-height: 1.4;
-    gap: 10px;
 }
 
 .checkbox-container input {
-    display: none;
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
 }
 
 .checkmark {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #ddd;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-    margin-top: 2px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 1rem;
+    width: 1rem;
+    background-color: #eee;
+    border-radius: 0.25rem;
 }
 
 .checkbox-container input:checked + .checkmark {
-    background: #4CAF50;
-    border-color: #4CAF50;
+    background-color: #4CAF50;
 }
 
 .checkbox-container input:checked + .checkmark::after {
-    content: '✓';
+    content: "";
     position: absolute;
-    top: -2px;
-    left: 2px;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
+    left: 0.375rem;
+    top: 2px;
+    width: 0.3125rem;
+    height: 0.625rem;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    font-size: 0.75rem;
 }
 
 .checkbox-container a {
@@ -310,26 +267,24 @@ body {
     text-decoration: underline;
 }
 
-/* Register Button */
 .register-btn {
     width: 100%;
-    padding: 15px;
-    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    padding: 0.9375rem;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: 0.625rem;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03125rem;
     box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
 }
 
 .register-btn:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
@@ -345,167 +300,143 @@ body {
 
 .register-footer p {
     color: #666;
-    font-size: 0.9rem;
-    margin-bottom: 20px;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
 }
 
 .register-footer a {
     color: #4CAF50;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
+    transition: color 0.3s ease;
 }
 
 .register-footer a:hover {
+    color: #45a049;
     text-decoration: underline;
 }
 
-/* Account Types Info */
+/* Account Types */
 .account-types {
-    background: rgba(76, 175, 80, 0.05);
-    padding: 20px;
-    border-radius: 10px;
-    border: 1px solid rgba(76, 175, 80, 0.1);
+    background: rgba(76, 175, 80, 0.1);
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    margin-top: 1rem;
 }
 
 .account-types h4 {
-    color: #333;
-    font-size: 0.9rem;
-    margin-bottom: 15px;
+    color: #4CAF50;
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
     text-align: center;
 }
 
 .types {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
 }
 
 .type-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.85rem;
-    color: #555;
+    background: white;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    text-align: center;
+    border: 1px solid rgba(76, 175, 80, 0.2);
 }
 
 .type-info i {
+    font-size: 0.875rem;
     color: #4CAF50;
-    width: 16px;
-    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.type-info span {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
 }
 
 /* Password Strength Indicator */
 .password-strength {
-    font-size: 0.8rem;
-    margin-top: 5px;
-    padding: 5px 8px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .password-strength.very-weak {
-    background: #ffebee;
-    color: #c62828;
+    color: #dc2626;
 }
 
 .password-strength.weak {
-    background: #fff3e0;
-    color: #ef6c00;
+    color: #f59e0b;
 }
 
 .password-strength.fair {
-    background: #fff8e1;
-    color: #f57f17;
+    color: #eab308;
 }
 
 .password-strength.good {
-    background: #f3e5f5;
-    color: #7b1fa2;
+    color: #22c55e;
 }
 
 .password-strength.strong {
-    background: #e8f5e8;
-    color: #2e7d32;
+    color: #16a34a;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     .register-container {
-        max-width: 100%;
-        padding: 10px;
+        max-width: 400px;
+        padding: 1rem;
     }
-    
-    .register-card {
-        padding: 30px 25px;
-        margin: 10px 0;
-    }
-    
-    .logo h1 {
-        font-size: 1.8rem;
-    }
-    
-    .types {
-        gap: 8px;
-    }
-    
-    .type-info {
-        font-size: 0.8rem;
-    }
-}
 
-@media (max-width: 480px) {
     .register-card {
-        padding: 25px 20px;
+        padding: 2rem;
     }
-    
-    .logo {
-        flex-direction: column;
-        gap: 5px;
-    }
-    
+
     .logo h1 {
-        font-size: 1.6rem;
+        font-size: 1.75rem;
     }
-    
-    .input-group input,
-    .input-group select {
-        padding: 12px 12px 12px 40px;
-    }
-    
-    .register-btn {
-        padding: 12px;
-    }
-    
+
     .types {
-        gap: 6px;
+        grid-template-columns: 1fr;
     }
-    
+
     .type-info {
         font-size: 0.75rem;
     }
 }
 
-/* Loading Animation */
-.loading {
-    position: relative;
-    pointer-events: none;
-}
+@media (max-width: 480px) {
+    .register-card {
+        padding: 1.5625rem;
+    }
 
-.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 2px solid transparent;
-    border-top: 2px solid #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
+    .logo {
+        flex-direction: column;
+        gap: 0.3125rem;
+    }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    .logo h1 {
+        font-size: 1.5rem;
+    }
+
+    .input-group input,
+    .input-group select {
+        padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+    }
+
+    .register-btn {
+        padding: 0.75rem;
+    }
+
+    .types {
+        grid-template-columns: 1fr;
+    }
+
+    .type-info {
+        font-size: 0.75rem;
+    }
 } 

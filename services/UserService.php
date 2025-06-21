@@ -328,11 +328,8 @@ class UserService
             FROM users u
             WHERE $whereClause
             ORDER BY u.created_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT $limit OFFSET $offset
         ";
-        
-        $params[] = $limit;
-        $params[] = $offset;
         
         $stmt = $this->db->prepare($query);
         $stmt->execute($params);
@@ -353,17 +350,10 @@ class UserService
     public function createUser($userData)
     {
         try {
-            // Validation
-            if (empty($userData['name']) || empty($userData['email']) || empty($userData['password'])) {
-                return ['success' => false, 'message' => 'All fields are required'];
-            }
-            
-            if (!filter_var($userData['email'], FILTER_VALIDATE_EMAIL)) {
-                return ['success' => false, 'message' => 'Invalid email format'];
-            }
-            
-            if (strlen($userData['password']) < 6) {
-                return ['success' => false, 'message' => 'Password must be at least 6 characters'];
+            // Comprehensive validation
+            $validation = $this->validateUserData($userData, false);
+            if (!$validation['valid']) {
+                return ['success' => false, 'message' => $validation['message']];
             }
             
             // Check if email exists
@@ -403,13 +393,10 @@ class UserService
     public function updateUser($userId, $userData)
     {
         try {
-            // Validation
-            if (empty($userData['name']) || empty($userData['email'])) {
-                return ['success' => false, 'message' => 'Name and email are required'];
-            }
-            
-            if (!filter_var($userData['email'], FILTER_VALIDATE_EMAIL)) {
-                return ['success' => false, 'message' => 'Invalid email format'];
+            // Comprehensive validation
+            $validation = $this->validateUserData($userData, true);
+            if (!$validation['valid']) {
+                return ['success' => false, 'message' => $validation['message']];
             }
             
             // Check if email exists (excluding current user)
@@ -528,6 +515,72 @@ class UserService
             ['role_name' => 'vendor', 'description' => 'Vendor'],
             ['role_name' => 'staff', 'description' => 'Staff Member'],
             ['role_name' => 'customer', 'description' => 'Customer']
+        ];
+    }
+    
+    /**
+     * Comprehensive user data validation
+     */
+    private function validateUserData($userData, $isUpdate = false)
+    {
+        $errors = [];
+        
+        // Validate Name
+        $name = trim($userData['name'] ?? '');
+        if (empty($name)) {
+            $errors[] = 'Name is required';
+        } elseif (strlen($name) < 2) {
+            $errors[] = 'Name must be at least 2 characters long';
+        } elseif (strlen($name) > 100) {
+            $errors[] = 'Name must be less than 100 characters';
+        } elseif (!preg_match("/^[a-zA-Z\s\-\.']+$/", $name)) {
+            $errors[] = 'Name contains invalid characters (only letters, spaces, hyphens, periods, and apostrophes allowed)';
+        }
+        
+        // Validate Email
+        $email = trim($userData['email'] ?? '');
+        if (empty($email)) {
+            $errors[] = 'Email is required';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Please enter a valid email address';
+        } elseif (strlen($email) > 100) {
+            $errors[] = 'Email must be less than 100 characters';
+        }
+        
+        // Validate Password (required for new users)
+        if (!$isUpdate) {
+            $password = $userData['password'] ?? '';
+            if (empty($password)) {
+                $errors[] = 'Password is required';
+            } elseif (strlen($password) < 8) {
+                $errors[] = 'Password must be at least 8 characters long';
+            } elseif (strlen($password) > 255) {
+                $errors[] = 'Password must be less than 255 characters';
+            } elseif (!preg_match('/(?=.*[a-z])/', $password)) {
+                $errors[] = 'Password must contain at least one lowercase letter';
+            } elseif (!preg_match('/(?=.*[A-Z])/', $password)) {
+                $errors[] = 'Password must contain at least one uppercase letter';
+            } elseif (!preg_match('/(?=.*\d)/', $password)) {
+                $errors[] = 'Password must contain at least one number';
+            } elseif (!preg_match('/(?=.*[@$!%*?&])/', $password)) {
+                $errors[] = 'Password must contain at least one special character (@$!%*?&)';
+            }
+        }
+        
+        // Validate Role
+        $role = $userData['role'] ?? '';
+        if (empty($role)) {
+            $errors[] = 'User role is required';
+        } else {
+            $validRoles = ['admin', 'vendor', 'staff', 'customer'];
+            if (!in_array($role, $validRoles)) {
+                $errors[] = 'Invalid user role selected';
+            }
+        }
+        
+        return [
+            'valid' => empty($errors),
+            'message' => empty($errors) ? 'Validation passed' : implode('. ', $errors)
         ];
     }
 } 
