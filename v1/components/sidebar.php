@@ -59,6 +59,15 @@ function hasSidebarPermission($permission) {
             </li>
             <?php endif; ?>
             
+            <?php if (hasSidebarPermission('manage_customers')): ?>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/customer-management/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/customer-management/">
+                    <i class="fas fa-user-friends"></i>
+                    <span>Customer Management</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            
             <?php if (hasSidebarPermission('manage_staff')): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/staff-management/') !== false ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/staff-management/">
