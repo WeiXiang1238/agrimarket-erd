@@ -125,16 +125,18 @@ $userStats = $userService->getUserStatistics();
             
             <!-- Dashboard Content -->
             <div class="dashboard-content">
-                <!-- Page Header -->
-                <div class="page-header">
-                    <div>
-                        <h2>User Management</h2>
-                        <p>Manage system users, roles, and permissions</p>
+                <!-- Page Header with Gradient -->
+                <div class="page-header-gradient">
+                    <div class="page-header">
+                        <div>
+                            <h2>User Management</h2>
+                            <p>Manage system users, roles, and permissions</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openCreateModal()">
+                            <i class="fas fa-plus"></i>
+                            Add New User
+                        </button>
                     </div>
-                    <button class="btn btn-primary" onclick="openCreateModal()">
-                        <i class="fas fa-plus"></i>
-                        Add New User
-                    </button>
                 </div>
 
                 <!-- Stats Cards -->
@@ -411,14 +413,12 @@ $userStats = $userService->getUserStatistics();
                 body: formData,
             })
             .then(response => {
-                console.log(response);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 return response.json();
             })
             .then(data => {
-                console.log(data);
                 if (data.success) {
                     displayUsers(data);
                 } else {

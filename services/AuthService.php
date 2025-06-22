@@ -45,13 +45,16 @@ class AuthService
             ");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
-            
+
             if (!$user) {
                 return [
                     'success' => false,
                     'message' => 'Invalid email or password'
                 ];
             }
+            error_log('user password: ' . print_r($user['password'], true));
+            error_log('user password: ' . print_r($password, true));
+            error_log('Password verification result: ' . var_export(password_verify($password, $user['password']), true));
             
             // Verify password
             if (!password_verify($password, $user['password'])) {

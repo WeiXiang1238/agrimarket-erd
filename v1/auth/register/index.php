@@ -25,11 +25,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $agree = isset($_POST['agree_terms']);
     $csrfToken = $_POST['csrf_token'] ?? '';
     
+    // Additional fields for vendor registration
+    $businessName = trim($_POST['business_name'] ?? '');
+    $businessAddress = trim($_POST['business_address'] ?? '');
+    $websiteUrl = trim($_POST['website_url'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    
     // Validate CSRF token
     if (!$authService->validateCSRFToken($csrfToken)) {
         $error = 'Invalid security token. Please try again.';
     } elseif (empty($name) || empty($email) || empty($password)) {
         $error = 'Please fill in all required fields.';
+    } elseif ($role === 'vendor' && (empty($businessName) || empty($businessAddress))) {
+        $error = 'Business name and business address are required for vendor registration.';
     } elseif (strlen($password) < 6) {
         $error = 'Password must be at least 6 characters long.';
     } elseif ($password !== $confirmPassword) {
@@ -39,16 +47,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
     } else {
-        // Attempt registration
-        $userData = [
-            'name' => $name,
-            'email' => $email,
-            'phone' => $phone,
-            'password' => $password,
-            'role' => $role
-        ];
-        
-        $result = $userService->register($userData);
+        // Attempt registration based on role
+        if ($role === 'customer') {
+            require_once __DIR__ . '/../../../services/CustomerService.php';
+            $customerService = new CustomerService();
+            
+            $customerData = [
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'password' => $password
+            ];
+            
+            $result = $customerService->registerCustomer($customerData);
+        } elseif ($role === 'vendor') {
+            require_once __DIR__ . '/../../../services/VendorService.php';
+            $vendorService = new VendorService();
+            
+            $vendorData = [
+                'contact_person' => $name,
+                'business_name' => $businessName,
+                'business_email' => $email,
+                'business_phone' => $phone,
+                'business_address' => $businessAddress,
+                'website_url' => !empty($websiteUrl) ? $websiteUrl : null,
+                'description' => !empty($description) ? $description : null,
+                'subscription_tier' => 'basic',
+                'password' => $password
+            ];
+            
+            $result = $vendorService->registerVendor($vendorData);
+        } else {
+            // Fallback to regular user registration
+            $userData = [
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'password' => $password,
+                'role' => $role
+            ];
+            
+            $result = $userService->register($userData);
+        }
         
         if ($result['success']) {
             $success = $result['message'] . ' You can now log in with your credentials.';
@@ -155,10 +195,75 @@ $csrfToken = $authService->generateCSRFToken();
                         <label for="role">Account Type *</label>
                         <div class="input-group">
                             <i class="fas fa-user-tag"></i>
-                            <select id="role" name="role" required>
+                            <select id="role" name="role" required onchange="toggleVendorFields()">
                                 <option value="customer" <?php echo ($_POST['role'] ?? 'customer') === 'customer' ? 'selected' : ''; ?>>Customer</option>
                                 <option value="vendor" <?php echo ($_POST['role'] ?? '') === 'vendor' ? 'selected' : ''; ?>>Vendor</option>
                             </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Vendor-specific fields (hidden by default) -->
+                <div id="vendorFields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="business_name">Business Name *</label>
+                            <div class="input-group">
+                                <i class="fas fa-store"></i>
+                                <input 
+                                    type="text" 
+                                    id="business_name" 
+                                    name="business_name" 
+                                    placeholder="Enter your business name"
+                                    value="<?php echo htmlspecialchars($_POST['business_name'] ?? ''); ?>"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="business_address">Business Address *</label>
+                            <div class="input-group">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <textarea 
+                                    id="business_address" 
+                                    name="business_address" 
+                                    placeholder="Enter your complete business address"
+                                    rows="3"
+                                ><?php echo htmlspecialchars($_POST['business_address'] ?? ''); ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="website_url">Website URL (Optional)</label>
+                            <div class="input-group">
+                                <i class="fas fa-globe"></i>
+                                <input 
+                                    type="url" 
+                                    id="website_url" 
+                                    name="website_url" 
+                                    placeholder="https://www.yourwebsite.com"
+                                    value="<?php echo htmlspecialchars($_POST['website_url'] ?? ''); ?>"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="description">Business Description (Optional)</label>
+                            <div class="input-group">
+                                <i class="fas fa-align-left"></i>
+                                <textarea 
+                                    id="description" 
+                                    name="description" 
+                                    placeholder="Describe your business and products"
+                                    rows="4"
+                                ><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -273,6 +378,29 @@ $csrfToken = $authService->generateCSRFToken();
             });
         });
         
+        // Toggle vendor fields based on role selection
+        function toggleVendorFields() {
+            const roleSelect = document.getElementById('role');
+            const vendorFields = document.getElementById('vendorFields');
+            const businessNameInput = document.getElementById('business_name');
+            const businessAddressInput = document.getElementById('business_address');
+            
+            if (roleSelect.value === 'vendor') {
+                vendorFields.style.display = 'block';
+                businessNameInput.required = true;
+                businessAddressInput.required = true;
+            } else {
+                vendorFields.style.display = 'none';
+                businessNameInput.required = false;
+                businessAddressInput.required = false;
+            }
+        }
+        
+        // Initialize vendor fields on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleVendorFields();
+        });
+        
         // Form validation
         document.querySelector('.register-form').addEventListener('submit', function(e) {
             const name = document.getElementById('name').value.trim();
@@ -280,11 +408,25 @@ $csrfToken = $authService->generateCSRFToken();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
             const agreeTerms = document.querySelector('input[name="agree_terms"]').checked;
+            const role = document.getElementById('role').value;
             
+            // Basic validation
             if (!name || !email || !password || !confirmPassword) {
                 e.preventDefault();
                 alert('Please fill in all required fields.');
                 return;
+            }
+            
+            // Vendor-specific validation
+            if (role === 'vendor') {
+                const businessName = document.getElementById('business_name').value.trim();
+                const businessAddress = document.getElementById('business_address').value.trim();
+                
+                if (!businessName || !businessAddress) {
+                    e.preventDefault();
+                    alert('Business name and business address are required for vendor registration.');
+                    return;
+                }
             }
             
             if (!isValidEmail(email)) {
