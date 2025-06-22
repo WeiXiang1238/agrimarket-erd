@@ -88,8 +88,16 @@ abstract class BaseModel
      * Find record by ID
      */
     public function find($id) {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$this->primaryKey} = ? AND is_archive = 0");
-        $stmt->execute([$id]);
+        $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = ?";
+        $params = [$id];
+        
+        // Add soft delete condition only if softDeletes is enabled
+        if ($this->softDeletes) {
+            $sql .= " AND is_archive = 0";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetch();
     }
     
@@ -97,8 +105,15 @@ abstract class BaseModel
      * Get all records
      */
     public function findAll($conditions = [], $limit = null, $offset = 0) {
-        $sql = "SELECT * FROM {$this->table} WHERE is_archive = 0";
+        $sql = "SELECT * FROM {$this->table}";
         $params = [];
+        
+        // Add soft delete condition only if softDeletes is enabled
+        if ($this->softDeletes) {
+            $sql .= " WHERE is_archive = 0";
+        } else {
+            $sql .= " WHERE 1=1";
+        }
         
         if (!empty($conditions)) {
             foreach ($conditions as $field => $value) {
@@ -176,8 +191,15 @@ abstract class BaseModel
      * Count records
      */
     public function count($conditions = []) {
-        $sql = "SELECT COUNT(*) as total FROM {$this->table} WHERE is_archive = 0";
+        $sql = "SELECT COUNT(*) as total FROM {$this->table}";
         $params = [];
+        
+        // Add soft delete condition only if softDeletes is enabled
+        if ($this->softDeletes) {
+            $sql .= " WHERE is_archive = 0";
+        } else {
+            $sql .= " WHERE 1=1";
+        }
         
         if (!empty($conditions)) {
             foreach ($conditions as $field => $value) {
