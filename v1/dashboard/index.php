@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/PermissionService.php';
+require_once __DIR__ . '/../../models/Product.php';
+require_once __DIR__ . '/../../models/Vendor.php';
+require_once __DIR__ . '/../../models/Order.php';
+require_once __DIR__ . '/../../models/SubscriptionTier.php';
+require_once __DIR__ . '/../../models/VendorSubscription.php';
 
 $authService = new AuthService();
 $permissionService = new PermissionService();
@@ -22,6 +27,126 @@ if ($currentUser) {
 function hasPermission($permission) {
     global $userPermissions;
     return isset($userPermissions[$permission]);
+}
+
+// Function to get product count for current user
+function getProductCount($currentUser) {
+    if (!$currentUser) return 0;
+    
+    $productModel = new Product();
+    
+    // If user has manage_products permission (admin), return total count
+    if (hasPermission('manage_products')) {
+        return $productModel->count();
+    }
+    
+    // If user is a vendor, get their vendor_id and count their products
+    if ($currentUser['role'] == 'vendor') {
+        $vendorModel = new Vendor();
+        $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+        
+        if (!empty($vendor)) {
+            $vendorId = $vendor[0]['vendor_id'];
+            return $productModel->count(['vendor_id' => $vendorId]);
+        }
+    }
+    
+    return 0;
+}
+
+// Function to get order count for current user
+function getOrderCount($currentUser) {
+    if (!$currentUser) return 0;
+    
+    $orderModel = new Order();
+    
+    // If user has manage_orders permission (admin), return total count
+    if (hasPermission('manage_orders')) {
+        return $orderModel->count();
+    }
+    
+    // If user is a vendor, get their vendor_id and count their orders
+    if ($currentUser['role'] == 'vendor') {
+        $vendorModel = new Vendor();
+        $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+        
+        if (!empty($vendor)) {
+            $vendorId = $vendor[0]['vendor_id'];
+            return $orderModel->count(['vendor_id' => $vendorId]);
+        }
+    }
+    
+    // If user is a customer, count their orders
+    if ($currentUser['role'] == 'customer') {
+        return $orderModel->count(['customer_id' => $currentUser['user_id']]);
+    }
+    
+    return 0;
+}
+
+// Function to get vendor subscription details
+function getVendorSubscriptionDetails($currentUser) {
+    if (!$currentUser || $currentUser['role'] !== 'vendor') {
+        return null;
+    }
+    
+    $vendorModel = new Vendor();
+    $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+    
+    if (empty($vendor)) {
+        return null;
+    }
+    
+    $vendorId = $vendor[0]['vendor_id'];
+    $subscriptionTierId = $vendor[0]['subscription_tier_id'] ?? $vendor[0]['tier_id'];
+    
+    // Get subscription tier details
+    $subscriptionTierModel = new SubscriptionTier();
+    $subscriptionTier = $subscriptionTierModel->find($subscriptionTierId);
+    
+    if (!$subscriptionTier) {
+        return null;
+    }
+    
+    // Get active subscription details
+    $vendorSubscriptionModel = new VendorSubscription();
+    $activeSubscription = $vendorSubscriptionModel->findAll([
+        'vendor_id' => $vendorId,
+        'is_active' => 1
+    ]);
+    
+    $subscriptionDetails = [
+        'tier_name' => $subscriptionTier['name'],
+        'description' => $subscriptionTier['description'],
+        'monthly_fee' => $subscriptionTier['monthly_fee'],
+        'due_date' => null,
+        'is_active' => false
+    ];
+    
+    if (!empty($activeSubscription)) {
+        $subscriptionDetails['due_date'] = $activeSubscription[0]['end_date'];
+        $subscriptionDetails['is_active'] = true;
+    }
+    
+    return $subscriptionDetails;
+}
+
+// Function to get subscription tier background color
+function getSubscriptionTierColor($tierName) {
+    $tierName = strtolower(trim($tierName));
+    
+    switch ($tierName) {
+        case 'bronze':
+            return 'linear-gradient(135deg, #cd7f32, #b8860b)'; // Bronze color
+        case 'silver':
+            return 'linear-gradient(135deg, #c0c0c0, #a8a8a8)'; // Silver color
+        case 'gold':
+            return 'linear-gradient(135deg, #ffd700, #ffb347)'; // Gold color
+        case 'platinum':
+            return 'linear-gradient(135deg, #667eea, #764ba2)'; // Fantasy purple gradient
+        default:
+            return 'linear-gradient(135deg,rgb(108, 126, 120),rgb(29, 88, 70))'; // Green (default)
+    }
 }
 
 // Get dashboard title based on user role
@@ -112,9 +237,9 @@ function getDashboardTitle($user) {
                             <i class="fas fa-box"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo hasPermission('manage_products') ? '2,847' : '45'; ?></h3>
+                            <h3><?php echo getProductCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_products') ? 'Total Products' : 'My Products'; ?></p>
-                            <span class="stat-change positive">+15% from last month</span>
+                            <span class="stat-change positive">+1% from last month</span>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -126,7 +251,7 @@ function getDashboardTitle($user) {
                             <i class="fas fa-shopping-cart"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo hasPermission('manage_orders') ? '892' : '12'; ?></h3>
+                            <h3><?php echo getOrderCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_orders') ? 'Orders Today' : 'My Orders'; ?></p>
                             <span class="stat-change <?php echo hasPermission('manage_orders') ? 'negative' : 'positive'; ?>">
                                 <?php echo hasPermission('manage_orders') ? '-3% from yesterday' : '+2 this month'; ?>
@@ -147,6 +272,46 @@ function getDashboardTitle($user) {
                             <span class="stat-change neutral">Ready to checkout</span>
                         </div>
                     </div>
+                    <?php endif; ?>
+                    
+                    <!-- Subscription Tier Card for Vendors -->
+                    <?php if ($currentUser['role'] == 'vendor'): ?>
+                    <?php $subscriptionDetails = getVendorSubscriptionDetails($currentUser); ?>
+                    <?php if ($subscriptionDetails): ?>
+                    <div class="stat-card">
+                        <div class="stat-icon subscription" style="background: <?php echo getSubscriptionTierColor($subscriptionDetails['tier_name']); ?>; color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3><?php echo htmlspecialchars($subscriptionDetails['tier_name']) . ' Tier'; ?></h3>
+                            <p><?php echo htmlspecialchars($subscriptionDetails['description']); ?></p>
+                            <span class="stat-change <?php echo $subscriptionDetails['is_active'] ? 'positive' : 'negative'; ?>">
+                                RM <?php echo number_format($subscriptionDetails['monthly_fee'], 2); ?> / month
+                                <?php if ($subscriptionDetails['due_date']): ?>
+                                    • Due: <?php echo date('M j', strtotime($subscriptionDetails['due_date'])); ?>
+                                <?php endif; ?>
+                            </span>
+                            <div class="subscription-actions" style="margin-top: 0.5rem;">
+                                <a href="/agrimarket-erd/v1/subscription/subscription-plan.php" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                    <i class="fas fa-edit"></i>
+                                    Change Plan
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <!-- Debug: Show if subscription details are not found -->
+                    <div class="stat-card">
+                        <div class="stat-icon subscription" style="background: linear-gradient(135deg, #6b7280, #4b5563); color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
+                            <i class="fas fa-gem"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>No Subscription</h3>
+                            <p>Subscription details not found</p>
+                            <span class="stat-change neutral">Contact support</span>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 
