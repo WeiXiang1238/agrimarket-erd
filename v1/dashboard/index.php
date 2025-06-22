@@ -239,7 +239,7 @@ function getDashboardTitle($user) {
                         <div class="stat-info">
                             <h3><?php echo getProductCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_products') ? 'Total Products' : 'My Products'; ?></p>
-                            <span class="stat-change positive">+20% from last month</span>
+                            <span class="stat-change positive">+1% from last month</span>
                         </div>
                     </div>
                     <?php endif; ?>
