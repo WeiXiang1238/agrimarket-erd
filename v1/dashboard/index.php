@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/PermissionService.php';
+require_once __DIR__ . '/../../models/Product.php';
+require_once __DIR__ . '/../../models/Vendor.php';
 
 $authService = new AuthService();
 $permissionService = new PermissionService();
@@ -22,6 +24,31 @@ if ($currentUser) {
 function hasPermission($permission) {
     global $userPermissions;
     return isset($userPermissions[$permission]);
+}
+
+// Function to get product count for current user
+function getProductCount($currentUser) {
+    if (!$currentUser) return 0;
+    
+    $productModel = new Product();
+    
+    // If user has manage_products permission (admin), return total count
+    if (hasPermission('manage_products')) {
+        return $productModel->count();
+    }
+    
+    // If user is a vendor, get their vendor_id and count their products
+    if ($currentUser['role'] == 'vendor') {
+        $vendorModel = new Vendor();
+        $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+        
+        if (!empty($vendor)) {
+            $vendorId = $vendor[0]['vendor_id'];
+            return $productModel->count(['vendor_id' => $vendorId]);
+        }
+    }
+    
+    return 0;
 }
 
 // Get dashboard title based on user role
@@ -112,7 +139,7 @@ function getDashboardTitle($user) {
                             <i class="fas fa-box"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo hasPermission('manage_products') ? '2,847' : '45'; ?></h3>
+                            <h3><?php echo getProductCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_products') ? 'Total Products' : 'My Products'; ?></p>
                             <span class="stat-change positive">+20% from last month</span>
                         </div>
