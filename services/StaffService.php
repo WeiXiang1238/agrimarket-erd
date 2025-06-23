@@ -83,7 +83,13 @@ class StaffService
                 u.user_id,
                 u.name,
                 u.email,
-                u.role
+                u.role,
+                (
+                    SELECT COUNT(*) FROM staff_tasks t WHERE t.staff_id = s.staff_id AND t.is_archive = 0
+                ) AS task_count,
+                (
+                    SELECT COUNT(*) FROM staff_tasks t WHERE t.staff_id = s.staff_id AND t.is_archive = 0 AND t.status = 'completed'
+                ) AS completed_task_count
             FROM staff s
             JOIN users u ON s.user_id = u.user_id
             WHERE $whereClause
@@ -801,6 +807,57 @@ class StaffService
                 'last_activity' => null,
                 'performance_rating' => null
             ];
+        }
+    }
+    
+    /**
+     * Mark a staff task as completed
+     */
+    public function markTaskCompleted($taskId)
+    {
+        $db = $this->db;
+        $stmt = $db->prepare("UPDATE staff_tasks SET status = 'completed', completed_date = NOW() WHERE task_id = ?");
+        return $stmt->execute([$taskId]);
+    }
+    
+    /**
+     * Mark a staff task as not completed
+     */
+    public function markTaskNotCompleted($taskId)
+    {
+        $db = $this->db;
+        $stmt = $db->prepare("UPDATE staff_tasks SET status = 'pending', completed_date = NULL WHERE task_id = ?");
+        return $stmt->execute([$taskId]);
+    }
+    
+    /**
+     * Update a staff task
+     */
+    public function updateTask($taskData)
+    {
+        $db = $this->db;
+        try {
+            if (empty($taskData['task_id']) || empty($taskData['task_title'])) {
+                throw new Exception("Task ID and title are required");
+            }
+            $stmt = $db->prepare("
+                UPDATE staff_tasks SET
+                    task_title = ?,
+                    task_description = ?,
+                    priority = ?,
+                    due_date = ?
+                WHERE task_id = ?
+            ");
+            $stmt->execute([
+                $taskData['task_title'],
+                $taskData['task_description'] ?? null,
+                $taskData['priority'] ?? 'medium',
+                $taskData['due_date'] ?? null,
+                $taskData['task_id']
+            ]);
+            return ['success' => true, 'message' => 'Task updated successfully'];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 }
