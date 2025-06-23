@@ -25,11 +25,33 @@ $pageTitle = $pageTitle ?? 'Dashboard';
     </div>
     
     <div class="header-right">
-        <div class="notifications">
-            <button class="notification-btn">
+        <div class="notifications" style="position: relative;">
+            <button class="notification-btn" id="notificationBtn">
                 <i class="fas fa-bell"></i>
-                <span class="notification-badge">3</span>
+                <?php if (!empty($unreadCount)): ?>
+                    <span class="notification-badge"><?php echo $unreadCount; ?></span>
+                <?php endif; ?>
             </button>
+            <div class="notification-dropdown-panel" id="notificationDropdown">
+                <div class="dropdown-header">Notifications</div>
+                <ul style="list-style: none; margin: 0; padding: 0;">
+                    <?php if (empty($userNotifications)): ?>
+                        <li class="empty" style="text-align: center; color: #94a3b8; padding: 1rem;">No notifications</li>
+                    <?php else: ?>
+                        <?php foreach ($userNotifications as $notif): ?>
+                            <li 
+                                class="<?php echo isset($notif['is_read']) && $notif['is_read'] ? 'read' : 'unread'; ?>"
+                                <?php if (isset($notif['id'])): ?>data-notif-id="<?php echo htmlspecialchars($notif['id']); ?>"<?php endif; ?>
+                            >
+                                <span><?php echo htmlspecialchars($notif['message'] ?? ''); ?></span>
+                                <div class="notif-time">
+                                    <?php echo isset($notif['created_at']) ? date('M j, H:i', strtotime($notif['created_at'])) : ''; ?>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </ul>
+            </div>
         </div>
         
         <div class="user-menu">
@@ -90,6 +112,55 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!e.target.closest('.user-menu')) {
             document.querySelector('.user-dropdown')?.classList.remove('show');
         }
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var notifBtn = document.getElementById('notificationBtn');
+    var notifDropdown = document.getElementById('notificationDropdown');
+
+    if (notifBtn && notifDropdown) {
+        notifBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notifDropdown.classList.toggle('show');
+        });
+
+        notifDropdown.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent closing when clicking inside
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function() {
+            notifDropdown.classList.remove('show');
+        });
+    }
+
+    // Mark notification as read when clicked
+    document.querySelectorAll('.notification-dropdown li.unread').forEach(function(item) {
+        item.addEventListener('click', function() {
+            var notifId = this.getAttribute('data-notif-id');
+            fetch('/agrimarket-erd/v1/notifications/mark-as-read.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'id=' + encodeURIComponent(notifId)
+            }).then(response => response.json()).then(data => {
+                if (data.success) {
+                    this.classList.remove('unread');
+                    this.classList.add('read');
+                    this.style.background = 'white';
+                    this.style.fontWeight = 'normal';
+                    // Optionally update the badge count
+                    var badge = document.querySelector('.notification-badge');
+                    if (badge) {
+                        let count = parseInt(badge.textContent, 10);
+                        if (count > 1) badge.textContent = count - 1;
+                        else badge.remove();
+                    }
+                }
+            });
+        });
     });
 });
 </script> 

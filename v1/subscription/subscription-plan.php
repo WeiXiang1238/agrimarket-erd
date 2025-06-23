@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../services/PermissionService.php';
 require_once __DIR__ . '/../../models/Vendor.php';
 require_once __DIR__ . '/../../models/SubscriptionTier.php';
 require_once __DIR__ . '/../../models/VendorSubscription.php';
+require_once __DIR__ . '/../../services/NotificationService.php';
 
 $authService = new AuthService();
 $permissionService = new PermissionService();
@@ -144,6 +145,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_plan'])) {
                 $success = "Subscription plan updated successfully!";
                 // Refresh subscription details
                 $currentSubscription = getVendorSubscriptionDetails($currentUser);
+                
+                // Send notification to user
+                $notificationService = new NotificationService();
+                $notificationService->sendToUser(
+                    $currentUser['user_id'],
+                    'Your subscription plan has been changed to ' . htmlspecialchars($newTier['name']) . ' successfully.'
+                );
             } else {
                 $error = "Failed to update subscription plan. Please try again.";
             }

@@ -7,9 +7,11 @@ require_once __DIR__ . '/../../models/Vendor.php';
 require_once __DIR__ . '/../../models/Order.php';
 require_once __DIR__ . '/../../models/SubscriptionTier.php';
 require_once __DIR__ . '/../../models/VendorSubscription.php';
+require_once __DIR__ . '/../../services/NotificationService.php';
 
 $authService = new AuthService();
 $permissionService = new PermissionService();
+$notificationService = new NotificationService();
 
 // Require authentication (any authenticated user can access)
 $authService->requireAuth('/agrimarket-erd/v1/auth/login/');
@@ -21,6 +23,17 @@ $csrfToken = $authService->generateCSRFToken();
 $userPermissions = [];
 if ($currentUser) {
     $userPermissions = $permissionService->getEffectivePermissions($currentUser);
+}
+
+// Get notifications for the current user
+$userNotifications = [];
+$unreadCount = 0;
+if ($currentUser) {
+    $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 10);
+    $unreadCount = 0;
+    foreach ($userNotifications as $notif) {
+        if (!$notif['is_read']) $unreadCount++;
+    }
 }
 
 // Helper function to check permissions
@@ -671,9 +684,9 @@ function getDashboardTitle($user) {
         }
         
         // Notification functionality
-        document.querySelector('.notification-btn').addEventListener('click', function() {
-            alert('Notification panel would open here');
-        });
+        // document.querySelector('.notification-btn').addEventListener('click', function() {
+        //     alert('Notification panel would open here');
+        // });
         
         // Quick action buttons
         document.querySelectorAll('.action-btn').forEach(btn => {
