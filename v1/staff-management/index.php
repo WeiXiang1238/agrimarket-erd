@@ -139,6 +139,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 send_json_response(['success' => true, 'statistics' => $stats]);
                 break;
 
+            case 'update_task':
+                $taskData = [
+                    'task_id' => $_POST['task_id'],
+                    'task_title' => $_POST['task_title'],
+                    'task_description' => $_POST['task_description'],
+                    'priority' => $_POST['priority'] ?? 'medium',
+                    'due_date' => $_POST['due_date'] ?? null
+                ];
+                $result = $staffService->updateTask($taskData);
+                send_json_response($result);
+                break;
+
             default:
                 send_json_response(['success' => false, 'message' => 'Invalid action']);
                 break;
@@ -299,6 +311,7 @@ $statuses = ['active', 'inactive', 'terminated'];
                                 <th>Position</th>
                                 <th>Hire Date</th>
                                 <th>Salary</th>
+                                <th>TASKS</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -751,6 +764,46 @@ $statuses = ['active', 'inactive', 'terminated'];
         </div>
     </div>
 
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i>Edit Task</h3>
+                <button class="close-btn" type="button" onclick="closeEditTaskModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    <input type="hidden" id="editTaskId" name="task_id">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+                    <div class="form-group">
+                        <label>Task Title *</label>
+                        <input type="text" id="editTaskTitle" name="task_title" required maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Task Description</label>
+                        <textarea id="editTaskDescription" name="task_description" rows="4" maxlength="500"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select id="editTaskPriority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" id="editTaskDueDate" name="due_date">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeEditTaskModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let currentPage = 1;
@@ -776,6 +829,7 @@ $statuses = ['active', 'inactive', 'terminated'];
 
         // Load staff data
         function loadStaffData(page = 1) {
+            currentPage = page;
             const loadingIndicator = document.getElementById('loadingIndicator');
             const tableBody = document.getElementById('staffTableBody');
             const noDataMessage = document.getElementById('noDataMessage');
@@ -834,6 +888,7 @@ $statuses = ['active', 'inactive', 'terminated'];
                     <td>${member.position}</td>
                     <td>${formatDate(member.hire_date)}</td>
                     <td>${member.salary ? '$' + parseFloat(member.salary).toLocaleString() : 'N/A'}</td>
+                    <td>${member.completed_task_count || 0}/${member.task_count || 0}</td>
                     <td>
                         <span class="status-badge status-${member.status}">
                             ${member.status.charAt(0).toUpperCase() + member.status.slice(1)}
@@ -1122,7 +1177,7 @@ $statuses = ['active', 'inactive', 'terminated'];
                                             task.priority === 'medium' ? 'priority-medium' : 'priority-low';
                         const statusClass = task.status === 'completed' ? 'status-completed' : 
                                           task.status === 'in_progress' ? 'status-progress' : 'status-pending';
-                        
+                        const completedDate = task.completed_date ? new Date(task.completed_date).toLocaleString() : null;
                         tasksHTML += `
                             <div class="task-item ${priorityClass} ${statusClass}">
                                 <div class="task-header">
@@ -1134,8 +1189,10 @@ $statuses = ['active', 'inactive', 'terminated'];
                                 </div>
                                 <div class="task-description">${task.task_description || 'No description provided'}</div>
                                 <div class="task-footer">
-                                    <span class="task-date">Assigned: ${formatDate(task.assigned_date)}</span>
-                                    ${task.due_date ? `<span class="task-due">Due: ${formatDate(task.due_date)}</span>` : ''}
+                                    <span class="task-date" style="margin-right: 1.5rem;">Assigned: ${formatDate(task.assigned_date)}</span>
+                                    ${task.due_date ? `<span class="task-due" style="margin-right: 1.5rem;">Due: ${formatDate(task.due_date)}</span>` : ''}
+                                    ${completedDate ? `<span class="task-completed" style="color:#059669; margin-right: 1.5rem;">Completed: ${completedDate}</span>` : ''}
+                                    <button class="btn btn-secondary btn-sm" style="margin-left:1rem;" onclick="openEditTaskModal(${task.task_id}, '${encodeURIComponent(task.task_title)}', '${encodeURIComponent(task.task_description || '')}', '${task.priority}', '${task.due_date || ''}')">Edit</button>
                                 </div>
                             </div>
                         `;
@@ -1208,7 +1265,7 @@ $statuses = ['active', 'inactive', 'terminated'];
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    loadStaffData(currentPage);
+                    loadStaffData();
                     
                     // Update statistics after status change
                     updateStatistics();
@@ -1244,7 +1301,7 @@ $statuses = ['active', 'inactive', 'terminated'];
             .then(data => {
                 if (data.success) {
                     closeDeleteModal();
-                    loadStaffData(currentPage);
+                    loadStaffData();
                     updateStatistics();
                 } else {
                     alert('An error occurred: ' + (data.message || 'Unknown server error'));
@@ -1253,7 +1310,7 @@ $statuses = ['active', 'inactive', 'terminated'];
             .catch(error => {
                 console.error('The delete succeeded on the server, but the response was not valid JSON.', error);
                 closeDeleteModal();
-                loadStaffData(currentPage);
+                loadStaffData();
                 updateStatistics();
             });
         }
@@ -1310,7 +1367,7 @@ $statuses = ['active', 'inactive', 'terminated'];
             .then(data => {
                 if (data.success) {
                     closeEditStaffModal();
-                    loadStaffData(currentPage);
+                    loadStaffData();
                     alert(data.message || 'Staff member updated successfully!');
                 } else {
                     alert('Error updating staff: ' + data.message);
@@ -1340,6 +1397,7 @@ $statuses = ['active', 'inactive', 'terminated'];
                     if (currentViewStaffId) {
                         loadStaffTasks(currentViewStaffId);
                     }
+                    loadStaffData();
                     alert('Task assigned successfully!');
                 } else {
                     alert('Error assigning task: ' + data.message);
@@ -1424,6 +1482,45 @@ $statuses = ['active', 'inactive', 'terminated'];
                 }
             });
         }
+
+        // Edit Task Modal functions
+        function openEditTaskModal(taskId, title, description, priority, dueDate) {
+            document.getElementById('editTaskId').value = taskId;
+            document.getElementById('editTaskTitle').value = decodeURIComponent(title);
+            document.getElementById('editTaskDescription').value = decodeURIComponent(description);
+            document.getElementById('editTaskPriority').value = priority;
+            document.getElementById('editTaskDueDate').value = dueDate;
+            document.getElementById('editTaskModal').style.display = 'block';
+        }
+
+        function closeEditTaskModal() {
+            document.getElementById('editTaskModal').style.display = 'none';
+        }
+
+        document.getElementById('editTaskForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            formData.append('action', 'update_task');
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeEditTaskModal();
+                    if (currentViewStaffId) loadStaffTasks(currentViewStaffId);
+                    loadStaffData();
+                    alert('Task updated successfully!');
+                } else {
+                    alert('Error updating task: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating task:', error);
+                alert('Error updating task');
+            });
+        });
     </script>
 </body>
 </html> 

@@ -7,6 +7,10 @@ require_once __DIR__ . '/../../models/Vendor.php';
 require_once __DIR__ . '/../../models/Order.php';
 require_once __DIR__ . '/../../models/SubscriptionTier.php';
 require_once __DIR__ . '/../../models/VendorSubscription.php';
+require_once __DIR__ . '/../../models/Staff.php';
+require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../services/StaffService.php';
+require_once __DIR__ . '/../../models/StaffTask.php';
 
 $authService = new AuthService();
 $permissionService = new PermissionService();
@@ -160,6 +164,20 @@ function getDashboardTitle($user) {
         default: return 'Dashboard';
     }
 }
+
+// Handle task completion POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) {
+    $staffService = new StaffService();
+    $taskId = intval($_POST['complete_task_id']);
+    if (isset($_POST['is_completed']) && $_POST['is_completed'] == '1') {
+        $staffService->markTaskCompleted($taskId);
+    } else {
+        $staffService->markTaskNotCompleted($taskId);
+    }
+    // Redirect to avoid resubmission
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -187,6 +205,138 @@ function getDashboardTitle($user) {
             
             <!-- Dashboard Content -->
             <div class="dashboard-content">
+                <?php if ($currentUser['role'] == 'staff'): ?>
+                    <?php
+                    require_once __DIR__ . '/../../services/StaffService.php';
+                    require_once __DIR__ . '/../../models/Notification.php';
+                    $staffService = new StaffService();
+                    $staffModel = new Staff();
+                    $userModel = new User();
+                    $notificationModel = new Notification();
+
+                    // Get staff_id from user_id
+                    $staff = $staffModel->findAll(['user_id' => $currentUser['user_id']]);
+                    $staffId = $staff[0]['staff_id'] ?? null;
+
+                    // Get tasks
+                    $tasks = $staffId ? $staffService->getStaffTasks($staffId) : [];
+                    $pendingTasks = array_filter($tasks, function($t) { return $t['status'] !== 'completed'; });
+                    $completedTasks = array_filter($tasks, function($t) { return $t['status'] === 'completed'; });
+
+                    // Get performance
+                    $performance = $staffId ? $staffService->getStaffPerformance($staffId) : [];
+
+                    // Get notifications
+                    $notifications = $notificationModel->findAll(['user_id' => $currentUser['user_id']], 5);
+                    ?>
+                    <div class="dashboard-overview">
+                        <div class="stats-grid" style="margin-bottom: 2rem;">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #6b7280;"><i class="fas fa-info-circle"></i></div>
+                                <div class="stat-info">
+                                    <h3>Welcome</h3>
+                                    <p>Role: Staff</p>
+                                    <span class="stat-change neutral">Dashboard loading...</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #2563eb;"><i class="fas fa-list-check"></i></div>
+                                <div class="stat-info">
+                                    <h3><?php echo count($pendingTasks); ?></h3>
+                                    <p>Assigned Tasks</p>
+                                    <span class="stat-change positive">Today</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #059669;"><i class="fas fa-bell"></i></div>
+                                <div class="stat-info">
+                                    <h3>0</h3>
+                                    <p>Unread Notifications</p>
+                                    <span class="stat-change neutral">Recent</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: #f59e0b;"><i class="fas fa-star"></i></div>
+                                <div class="stat-info">
+                                    <h3><?php echo $performance['tasks_completed'] ?? 0; ?></h3>
+                                    <p>Tasks Completed</p>
+                                    <span class="stat-change positive">All Time</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- My Assigned Tasks Table -->
+                        <div style="background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 2rem; padding: 0 0 1.5rem 0; border: 1px solid #fbbf24;">
+                            <h3 style="padding: 1rem 1.5rem 0.5rem 1.5rem; font-weight: 600;">My Assigned Tasks</h3>
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; background: #fffbeb;">
+                                    <thead>
+                                        <tr style="background: #fef3c7;">
+                                            <th style="padding: 0.75rem; text-align:left;">Title</th>
+                                            <th style="padding: 0.75rem; text-align:left;">Description</th>
+                                            <th style="padding: 0.75rem; text-align:left;">Assigned Date</th>
+                                            <th style="padding: 0.75rem; text-align:left;">Priority</th>
+                                            <th style="padding: 0.75rem; text-align:left;">Status</th>
+                                            <th style="padding: 0.75rem; text-align:left;">Due Date</th>
+                                            <th style="padding: 0.75rem; text-align:left;">Completed Date</th>
+                                            <th style="padding: 0.75rem; text-align:center;">Complete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if ($tasks && count($tasks) > 0): ?>
+                                            <?php foreach ($tasks as $task): ?>
+                                                <tr>
+                                                    <td style="padding: 0.75rem;"><?php echo htmlspecialchars($task['task_title']); ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo htmlspecialchars($task['task_description'] ?? ''); ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo $task['assigned_date'] ? date('M j, Y h:i A', strtotime($task['assigned_date'])) : '-'; ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo ucfirst($task['priority']); ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo ucfirst($task['status']); ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo $task['due_date'] ? date('M j', strtotime($task['due_date'])) : '-'; ?></td>
+                                                    <td style="padding: 0.75rem;">
+                                                        <?php echo $task['completed_date'] ? date('M j, Y h:i A', strtotime($task['completed_date'])) : '-'; ?>
+                                                    </td>
+                                                    <td style="padding: 0.75rem; text-align:center;">
+                                                        <form method="POST" action="" style="margin:0;">
+                                                            <input type="hidden" name="complete_task_id" value="<?php echo $task['task_id']; ?>">
+                                                            <input type="checkbox" name="is_completed" value="1" <?php echo strtolower($task['status']) === 'completed' ? 'checked' : ''; ?> onchange="this.form.submit()">
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="8" style="padding: 0.75rem; text-align:center; color:#888;">No tasks assigned.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Recent Notifications Card -->
+                        <div style="background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 2rem; padding: 0 0 1.5rem 0;">
+                            <h3 style="padding: 1rem 1.5rem 0.5rem 1.5rem; font-weight: 600;">Recent Notifications</h3>
+                            <div style="padding: 0 1.5rem;">
+                                <?php if ($notifications && count($notifications) > 0): ?>
+                                    <ul style="list-style:none; margin:0; padding:0;">
+                                        <?php foreach ($notifications as $note): ?>
+                                            <li style="padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
+                                                <span style="font-weight:600;"><i class="fas fa-bell"></i> <?php echo htmlspecialchars($note['title'] ?? $note['message']); ?></span>
+                                                <span style="float:right; color:#888; font-size:0.95em;"> <?php echo isset($note['created_at']) ? date('M j, Y g:i A', strtotime($note['created_at'])) : ''; ?></span>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php else: ?>
+                                    <div style="color:#888; padding: 0.75rem 0;">No new notifications.</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <!-- Recent Activities Card -->
+                        <div style="background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 2rem; padding: 0 0 1.5rem 0;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding: 1rem 1.5rem 0.5rem 1.5rem;">
+                                <h3 style="font-weight: 600;">Recent Activities</h3>
+                                <a href="#" style="color: #2563eb; font-weight: 500; text-decoration: none;">View All</a>
+                            </div>
+                            <div style="padding: 0 1.5rem; color:#888;">No recent activities.</div>
+                        </div>
+                    </div>
+                <?php else: ?>
                 <!-- Stats Cards -->
                 <div class="stats-grid">
                     <!-- Debug: Show user role and permissions -->
@@ -421,6 +571,7 @@ function getDashboardTitle($user) {
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
         </main>
     </div>

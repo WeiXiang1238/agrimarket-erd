@@ -11,7 +11,7 @@ class Notification extends BaseModel
     protected $table = 'notifications';
     protected $primaryKey = 'notification_id';
     protected $timestamps = true;
-    protected $softDeletes = true;
+    protected $softDeletes = false;
     
     protected $fillable = [
         'user_id',
