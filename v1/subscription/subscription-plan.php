@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_plan'])) {
         $newTierId = $_POST['tier_id'] ?? null;
         
         if ($newTierId && $currentSubscription) {
-            // Update vendor's subscription tier
+            // Update vendor's subscription tier in vendors table
             $vendorModel = new Vendor();
             $updateResult = $vendorModel->update($currentSubscription['vendor_id'], [
                 'subscription_tier_id' => $newTierId,
@@ -120,6 +120,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_plan'])) {
             ]);
             
             if ($updateResult) {
+                // 1. Deactivate old vendor_subscriptions
+                $vendorSubscriptionModel = new VendorSubscription();
+                $vendorSubscriptionModel->updateByConditions(
+                    ['vendor_id' => $currentSubscription['vendor_id'], 'is_active' => 1],
+                    ['is_active' => 0]
+                );
+                // 2. Insert new active vendor_subscription
+                $today = date('Y-m-d');
+                $endDate = date('Y-m-d', strtotime('+1 month', strtotime($today)));
+                // Get new tier fee
+                $subscriptionTierModel = new SubscriptionTier();
+                $newTier = $subscriptionTierModel->find($newTierId);
+                $paymentAmount = $newTier ? $newTier['monthly_fee'] : 0;
+                $vendorSubscriptionModel->create([
+                    'vendor_id' => $currentSubscription['vendor_id'],
+                    'tier_id' => $newTierId,
+                    'start_date' => $today,
+                    'end_date' => $endDate,
+                    'payment_amount' => $paymentAmount,
+                    'is_active' => 1
+                ]);
                 $success = "Subscription plan updated successfully!";
                 // Refresh subscription details
                 $currentSubscription = getVendorSubscriptionDetails($currentUser);
