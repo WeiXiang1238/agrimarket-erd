@@ -215,6 +215,26 @@ abstract class BaseModel
     }
     
     /**
+     * Update multiple records by conditions
+     */
+    public function updateByConditions($conditions, $data) {
+        $setParts = [];
+        $params = [];
+        foreach ($data as $field => $value) {
+            $setParts[] = "{$field} = ?";
+            $params[] = $value;
+        }
+        $whereParts = [];
+        foreach ($conditions as $field => $value) {
+            $whereParts[] = "{$field} = ?";
+            $params[] = $value;
+        }
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $setParts) . " WHERE " . implode(' AND ', $whereParts);
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
      * Close database connection
      */
     public function __destruct() {
