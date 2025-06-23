@@ -139,6 +139,4 @@ class ModelLoader
 // $userModel = ModelLoader::load('User');
 // $productModel = ModelLoader::load('Product');
 // $orderModel = ModelLoader::load('Order');
-// $categories = ModelLoader::getModelsByCategory();
-
-?> 
+// $categories = ModelLoader::getModelsByCategory(); 
