@@ -214,6 +214,8 @@
 
 .notification-dropdown-panel.show {
     display: block;
+    position: absolute;
+    top:100%;
 }
 
 .notification-dropdown-panel ul {
