@@ -375,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                         <div class="stat-info">
                             <h3>1,234</h3>
                             <p>Total Users</p>
-                            <span class="stat-change positive">+15% from last month</span>
+                            <span class="stat-change positive">+12% from last month</span>
                         </div>
                     </div>
                     <?php endif; ?>
