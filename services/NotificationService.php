@@ -31,7 +31,7 @@ class NotificationService {
 
     // Mark a notification as read
     public function markAsRead($notificationId) {
-        $stmt = $this->db->prepare("UPDATE notifications SET is_read = 1 WHERE id = ?");
+        $stmt = $this->db->prepare("UPDATE notifications SET is_read = 1 WHERE notification_id = ?");
         return $stmt->execute([$notificationId]);
     }
 } 

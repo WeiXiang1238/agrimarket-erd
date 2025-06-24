@@ -41,7 +41,7 @@ $pageTitle = $pageTitle ?? 'Dashboard';
                         <?php foreach ($userNotifications as $notif): ?>
                             <li 
                                 class="<?php echo isset($notif['is_read']) && $notif['is_read'] ? 'read' : 'unread'; ?>"
-                                <?php if (isset($notif['id'])): ?>data-notif-id="<?php echo htmlspecialchars($notif['id']); ?>"<?php endif; ?>
+                                <?php if (isset($notif['notification_id'])): ?>data-notif-id="<?php echo htmlspecialchars($notif['notification_id']); ?>"<?php endif; ?>
                             >
                                 <span><?php echo htmlspecialchars($notif['message'] ?? ''); ?></span>
                                 <div class="notif-time">
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Mark notification as read when clicked
-    document.querySelectorAll('.notification-dropdown li.unread').forEach(function(item) {
+    document.querySelectorAll('.notification-dropdown-panel li.unread').forEach(function(item) {
         item.addEventListener('click', function() {
             var notifId = this.getAttribute('data-notif-id');
             fetch('/agrimarket-erd/v1/notifications/mark-as-read.php', {
