@@ -78,10 +78,10 @@ function hasSidebarPermission($permission) {
             <?php endif; ?>
             
             <!-- Product Management -->
-            <?php if (hasSidebarPermission('manage_products')): ?>
+            <?php if (hasSidebarPermission('manage_products') || ($currentUser['role'] ?? '') === 'admin' || ($currentUser['role'] ?? '') === 'vendor'): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/product-management/') !== false ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/product-management/">
-                    <i class="fas fa-box"></i>
+                    <i class="fas fa-cube"></i>
                     <span>Product Management</span>
                 </a>
             </li>
@@ -99,9 +99,9 @@ function hasSidebarPermission($permission) {
             
             <!-- Order Management -->
             <?php if (hasSidebarPermission('manage_orders') || hasSidebarPermission('view_orders')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/orders/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/orders/">
-                    <i class="fas fa-shopping-cart"></i>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/order-management/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/order-management/">
+                    <i class="fas fa-clipboard-list"></i>
                     <span><?php echo hasSidebarPermission('manage_orders') ? 'Order Management' : 'My Orders'; ?></span>
                 </a>
             </li>
@@ -109,14 +109,14 @@ function hasSidebarPermission($permission) {
             
             <!-- Shopping (Customers) -->
             <?php if (hasSidebarPermission('place_orders')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/shop/">
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/products/') !== false || strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/products/">
                     <i class="fas fa-shopping-bag"></i>
                     <span>Shop Products</span>
                 </a>
             </li>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/cart/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/cart/">
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shopping-cart/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/shopping-cart/">
                     <i class="fas fa-shopping-cart"></i>
                     <span>Shopping Cart</span>
                 </a>

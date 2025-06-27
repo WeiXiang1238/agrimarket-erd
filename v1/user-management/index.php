@@ -436,7 +436,7 @@ $userStats = $userService->getUserStatistics();
         // Display users in table
         function displayUsers(data) {
             let html = `
-                <table class="users-table">
+                <table class="management-table">
                     <thead>
                         <tr>
                             <th>NAME</th>

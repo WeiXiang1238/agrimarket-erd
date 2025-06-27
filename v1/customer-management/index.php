@@ -266,11 +266,11 @@ $customerStats = $customerService->getCustomerStatistics();
                     </div>
                     
                     <div class="form-group">
-                        <label>Phone</label>
-                        <input type="tel" id="customerPhone" name="phone" 
+                        <label>Phone *</label>
+                        <input type="tel" id="customerPhone" name="phone" required
                                pattern="[+]?[0-9\s\-\(\)]{7,20}" placeholder="e.g., +1234567890">
                         <div class="error-message" id="customerPhoneError"></div>
-                        <small class="help-text">Valid phone number (7-20 digits)</small>
+                        <small class="help-text">Required: Valid phone number (7-20 digits)</small>
                     </div>
                     
                     <div class="form-group" id="addressGroup">
@@ -342,6 +342,10 @@ $customerStats = $customerService->getCustomerStatistics();
                         clearCustomerError('customerEmailError');
                     }
                 });
+                
+                emailInput.addEventListener('input', function() {
+                    clearCustomerError('customerEmailError');
+                });
             }
             
             // Add name validation on blur
@@ -349,13 +353,23 @@ $customerStats = $customerService->getCustomerStatistics();
             if (nameInput) {
                 nameInput.addEventListener('blur', function() {
                     const name = this.value.trim();
-                    if (name && (name.length < 2 || name.length > 100)) {
-                        showCustomerError('customerNameError', 'Name must be between 2 and 100 characters');
-                    } else if (name) {
-                        clearCustomerError('customerNameError');
+                    if (name) {
+                        if (name.length < 2) {
+                            showCustomerError('customerNameError', 'Name must be at least 2 characters');
+                        } else if (name.length > 100) {
+                            showCustomerError('customerNameError', 'Name must be less than 100 characters');
+                        } else if (!/^[a-zA-Z\s\-\.']+$/.test(name)) {
+                            showCustomerError('customerNameError', 'Name contains invalid characters');
+                        } else {
+                            clearCustomerError('customerNameError');
+                        }
                     } else {
                         clearCustomerError('customerNameError');
                     }
+                });
+                
+                nameInput.addEventListener('input', function() {
+                    clearCustomerError('customerNameError');
                 });
             }
             
@@ -364,13 +378,127 @@ $customerStats = $customerService->getCustomerStatistics();
             if (phoneInput) {
                 phoneInput.addEventListener('blur', function() {
                     const phone = this.value.trim();
-                    if (phone && !/^[+]?[0-9\s\-\(\)]{7,20}$/.test(phone)) {
-                        showCustomerError('customerPhoneError', 'Please enter a valid phone number');
-                    } else if (phone) {
-                        clearCustomerError('customerPhoneError');
+                    if (!phone) {
+                        showCustomerError('customerPhoneError', 'Phone number is required');
                     } else {
-                        clearCustomerError('customerPhoneError');
+                        const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+                        const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+                        if (!phoneRegex.test(cleanPhone)) {
+                            showCustomerError('customerPhoneError', 'Please enter a valid phone number');
+                        } else if (cleanPhone.length < 7 || cleanPhone.length > 15) {
+                            showCustomerError('customerPhoneError', 'Phone number must be between 7 and 15 digits');
+                        } else {
+                            clearCustomerError('customerPhoneError');
+                        }
                     }
+                });
+                
+                phoneInput.addEventListener('input', function() {
+                    clearCustomerError('customerPhoneError');
+                });
+            }
+            
+            // Add address validation for new customers
+            const addressInput = document.getElementById('customerAddress');
+            if (addressInput) {
+                addressInput.addEventListener('blur', function() {
+                    if (!isEditing) {
+                        const address = this.value.trim();
+                        if (address) {
+                            if (address.length < 5) {
+                                showCustomerError('customerAddressError', 'Address must be at least 5 characters');
+                            } else if (address.length > 255) {
+                                showCustomerError('customerAddressError', 'Address must be less than 255 characters');
+                            } else {
+                                clearCustomerError('customerAddressError');
+                            }
+                        } else {
+                            clearCustomerError('customerAddressError');
+                        }
+                    }
+                });
+                
+                addressInput.addEventListener('input', function() {
+                    clearCustomerError('customerAddressError');
+                });
+            }
+            
+            // Add city validation
+            const cityInput = document.getElementById('customerCity');
+            if (cityInput) {
+                cityInput.addEventListener('blur', function() {
+                    if (!isEditing) {
+                        const city = this.value.trim();
+                        if (city) {
+                            if (city.length < 2) {
+                                showCustomerError('customerCityError', 'City must be at least 2 characters');
+                            } else if (city.length > 100) {
+                                showCustomerError('customerCityError', 'City must be less than 100 characters');
+                            } else if (!/^[a-zA-Z\s\-\.']+$/.test(city)) {
+                                showCustomerError('customerCityError', 'City contains invalid characters');
+                            } else {
+                                clearCustomerError('customerCityError');
+                            }
+                        } else {
+                            clearCustomerError('customerCityError');
+                        }
+                    }
+                });
+                
+                cityInput.addEventListener('input', function() {
+                    clearCustomerError('customerCityError');
+                });
+            }
+            
+            // Add state validation
+            const stateInput = document.getElementById('customerState');
+            if (stateInput) {
+                stateInput.addEventListener('blur', function() {
+                    if (!isEditing) {
+                        const state = this.value.trim();
+                        if (state) {
+                            if (state.length < 2) {
+                                showCustomerError('customerStateError', 'State must be at least 2 characters');
+                            } else if (state.length > 100) {
+                                showCustomerError('customerStateError', 'State must be less than 100 characters');
+                            } else {
+                                clearCustomerError('customerStateError');
+                            }
+                        } else {
+                            clearCustomerError('customerStateError');
+                        }
+                    }
+                });
+                
+                stateInput.addEventListener('input', function() {
+                    clearCustomerError('customerStateError');
+                });
+            }
+            
+            // Add postal code validation
+            const postalInput = document.getElementById('customerPostalCode');
+            if (postalInput) {
+                postalInput.addEventListener('blur', function() {
+                    if (!isEditing) {
+                        const postalCode = this.value.trim();
+                        if (postalCode) {
+                            if (postalCode.length < 3) {
+                                showCustomerError('customerPostalCodeError', 'Postal code must be at least 3 characters');
+                            } else if (postalCode.length > 20) {
+                                showCustomerError('customerPostalCodeError', 'Postal code must be less than 20 characters');
+                            } else if (!/^[a-zA-Z0-9\s\-]+$/.test(postalCode)) {
+                                showCustomerError('customerPostalCodeError', 'Postal code contains invalid characters');
+                            } else {
+                                clearCustomerError('customerPostalCodeError');
+                            }
+                        } else {
+                            clearCustomerError('customerPostalCodeError');
+                        }
+                    }
+                });
+                
+                postalInput.addEventListener('input', function() {
+                    clearCustomerError('customerPostalCodeError');
                 });
             }
         });
@@ -420,6 +548,122 @@ $customerStats = $customerService->getCustomerStatistics();
             });
         }
 
+        // Form validation functions
+        function validateCustomerForm() {
+            let isValid = true;
+            clearCustomerErrors();
+            
+            // Validate Name
+            const name = document.getElementById('customerName').value.trim();
+            if (!name) {
+                showCustomerError('customerNameError', 'Name is required');
+                isValid = false;
+            } else if (name.length < 2) {
+                showCustomerError('customerNameError', 'Name must be at least 2 characters');
+                isValid = false;
+            } else if (name.length > 100) {
+                showCustomerError('customerNameError', 'Name must be less than 100 characters');
+                isValid = false;
+            } else if (!/^[a-zA-Z\s\-\.']+$/.test(name)) {
+                showCustomerError('customerNameError', 'Name contains invalid characters');
+                isValid = false;
+            }
+            
+            // Validate Email
+            const email = document.getElementById('customerEmail').value.trim();
+            if (!email) {
+                showCustomerError('customerEmailError', 'Email is required');
+                isValid = false;
+            } else {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showCustomerError('customerEmailError', 'Please enter a valid email address');
+                    isValid = false;
+                } else if (email.length > 100) {
+                    showCustomerError('customerEmailError', 'Email must be less than 100 characters');
+                    isValid = false;
+                }
+            }
+            
+            // Validate Phone (required)
+            const phone = document.getElementById('customerPhone').value.trim();
+            if (!phone) {
+                showCustomerError('customerPhoneError', 'Phone number is required');
+                isValid = false;
+            } else {
+                // Basic phone validation - allows various formats
+                const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+                const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+                if (!phoneRegex.test(cleanPhone)) {
+                    showCustomerError('customerPhoneError', 'Please enter a valid phone number');
+                    isValid = false;
+                } else if (cleanPhone.length < 7 || cleanPhone.length > 15) {
+                    showCustomerError('customerPhoneError', 'Phone number must be between 7 and 15 digits');
+                    isValid = false;
+                }
+            }
+            
+            // For new customers, validate address fields
+            if (!isEditing) {
+                const address = document.getElementById('customerAddress').value.trim();
+                const city = document.getElementById('customerCity').value.trim();
+                const state = document.getElementById('customerState').value.trim();
+                const postalCode = document.getElementById('customerPostalCode').value.trim();
+                
+                if (!address) {
+                    showCustomerError('customerAddressError', 'Address is required for new customers');
+                    isValid = false;
+                } else if (address.length < 5) {
+                    showCustomerError('customerAddressError', 'Address must be at least 5 characters');
+                    isValid = false;
+                } else if (address.length > 255) {
+                    showCustomerError('customerAddressError', 'Address must be less than 255 characters');
+                    isValid = false;
+                }
+                
+                if (!city) {
+                    showCustomerError('customerCityError', 'City is required for new customers');
+                    isValid = false;
+                } else if (city.length < 2) {
+                    showCustomerError('customerCityError', 'City must be at least 2 characters');
+                    isValid = false;
+                } else if (city.length > 100) {
+                    showCustomerError('customerCityError', 'City must be less than 100 characters');
+                    isValid = false;
+                } else if (!/^[a-zA-Z\s\-\.']+$/.test(city)) {
+                    showCustomerError('customerCityError', 'City contains invalid characters');
+                    isValid = false;
+                }
+                
+                if (!state) {
+                    showCustomerError('customerStateError', 'State is required for new customers');
+                    isValid = false;
+                } else if (state.length < 2) {
+                    showCustomerError('customerStateError', 'State must be at least 2 characters');
+                    isValid = false;
+                } else if (state.length > 100) {
+                    showCustomerError('customerStateError', 'State must be less than 100 characters');
+                    isValid = false;
+                }
+                
+                if (!postalCode) {
+                    showCustomerError('customerPostalCodeError', 'Postal code is required for new customers');
+                    isValid = false;
+                } else if (postalCode.length < 3) {
+                    showCustomerError('customerPostalCodeError', 'Postal code must be at least 3 characters');
+                    isValid = false;
+                } else if (postalCode.length > 20) {
+                    showCustomerError('customerPostalCodeError', 'Postal code must be less than 20 characters');
+                    isValid = false;
+                } else if (!/^[a-zA-Z0-9\s\-]+$/.test(postalCode)) {
+                    showCustomerError('customerPostalCodeError', 'Postal code contains invalid characters');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+
         function loadCustomers(page = 1, limit = null) {
             currentPage = page;
             
@@ -462,7 +706,7 @@ $customerStats = $customerService->getCustomerStatistics();
         // Display customers in table
         function displayCustomers(data) {
             let html = `
-                <table class="customers-table">
+                <table class="management-table">
                     <thead>
                         <tr>
                             <th>NAME</th>
@@ -608,7 +852,13 @@ $customerStats = $customerService->getCustomerStatistics();
         function saveCustomer() {
             // Clear previous messages
             document.getElementById('modalMessage').innerHTML = '';
-            clearCustomerErrors();
+            
+            // Validate form
+            if (!validateCustomerForm()) {
+                document.getElementById('modalMessage').innerHTML = 
+                    '<div class="error">Please fix the errors above</div>';
+                return;
+            }
 
             const form = document.getElementById('customerForm');
             const formData = new FormData(form);

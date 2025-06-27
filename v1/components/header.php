@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sidebarToggle) {
         sidebarToggle.addEventListener('click', function() {
             const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
             const overlay = document.querySelector('.sidebar-overlay');
             
             if (window.innerWidth <= 768) {
@@ -86,6 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 overlay?.classList.toggle('show');
             } else {
                 sidebar?.classList.toggle('collapsed');
+                // Also toggle expanded class on main content for better control
+                mainContent?.classList.toggle('expanded');
             }
         });
     }

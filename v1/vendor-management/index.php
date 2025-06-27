@@ -559,7 +559,7 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
         // Display vendors in table
         function displayVendors(data) {
             let html = `
-                <table class="vendors-table">
+                <table class="management-table">
                     <thead>
                         <tr>
                             <th>BUSINESS NAME</th>
