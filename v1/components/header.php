@@ -63,7 +63,7 @@ $pageTitle = $pageTitle ?? 'Dashboard';
                 </div>
             </div>
             <div class="user-dropdown">
-                <a href="#profile"><i class="fas fa-user"></i> My Profile</a>
+                <a href="/agrimarket-erd/v1/user-profile/"><i class="fas fa-user"></i> My Profile</a>
                 <a href="#settings"><i class="fas fa-cog"></i> Settings</a>
                 <a href="/agrimarket-erd/v1/auth/logout/"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
