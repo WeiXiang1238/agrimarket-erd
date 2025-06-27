@@ -1,0 +1,53 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+rules:
+  - name: Match Model Attributes
+    description: Ensure that all attributes and database columns match the model definition exactly.
+    when: editing_file
+    appliesTo: "*.php"
+    condition: |
+      file.path.contains("/models/") == false
+    check: |
+      Compare attributes used in controller/service/database migration files with those defined in the corresponding model files.
+      Warn if any mismatch is found in attribute names, types, or missing columns.
+
+  - name: Use Service File for Logic
+    description: Business logic and data processing must reside in service files only.
+    when: editing_file
+    appliesTo: "*.php"
+    condition: |
+      file.path.contains("/services/") == false
+    check: |
+      If data manipulation or business logic (like calculations, conditionals, database fetch/update logic) is found outside of a service file, suggest moving it to a service file.
+
+  - name: Consistent UI and Styling
+    description: All pages must follow consistent UI layout and styling as defined in design.
+    when: editing_file
+    appliesTo: "*.php"
+    check: |
+      Compare class names and layout with reference components or screenshots. Warn if inconsistencies or inline styles are used that differ from other pages.
+
+  - name: Reuse Global Styles
+    description: Reuse global styles from main.css instead of repeating styles.
+    when: editing_file
+    appliesTo: "*.php"
+    check: |
+      If repeated CSS or inline styles are found, suggest creating a class in main.css and using it instead.
+
+  - name: Reduce CSS Redundancy
+    description: Avoid repeating the same CSS rules across different components.
+    when: editing_file
+    appliesTo: ["*.php", "*.css"]
+    check: |
+      Detect duplicate or near-identical CSS rules and recommend consolidating into a shared class in main.css.
+
+  - name: Enforce Consistent Code Structure
+    description: Maintain consistent code structure and formatting across all PHP files.
+    when: editing_file
+    appliesTo: "*.php"
+    check: |
+
+      Verify indentation, bracket placement, function structure, and variable naming follow project conventions.

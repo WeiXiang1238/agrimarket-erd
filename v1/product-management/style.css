@@ -1,0 +1,140 @@
+/* Product Management Specific Styles */
+
+/* Product-specific stat icon colors */
+.stat-icon.total {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-icon.active {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-icon.warning {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.stat-icon.featured {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+/* Image Upload Styles */
+.image-upload-container {
+    position: relative;
+    margin-top: 5px;
+}
+
+.image-upload-container input[type="file"] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+}
+
+.image-preview {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f9f9f9;
+}
+
+.image-preview:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 150px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.upload-placeholder {
+    color: #666;
+    text-align: center;
+}
+
+.upload-placeholder i {
+    font-size: 2.5rem;
+    color: #007bff;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.upload-placeholder p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.image-preview.has-image {
+    border-style: solid;
+    border-color: #28a745;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+    z-index: 10;
+}
+
+.remove-image-btn:hover {
+    background-color: #c82333;
+}
+
+/* Existing image indicator */
+.image-preview[data-existing-image] {
+    border-color: #28a745;
+}
+
+.image-preview img[data-existing-image] {
+    border: 2px solid #28a745;
+}
+
+/* Loading state for modal */
+.message.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+/* Image status indicator */
+.image-status-indicator {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(40, 167, 69, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 10;
+}
+
+.image-status-indicator i {
+    font-size: 0.7rem;
+}

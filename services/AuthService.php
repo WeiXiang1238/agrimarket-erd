@@ -423,4 +423,88 @@ class AuthService
         
         return $this->getRedirectUrl($user['roles']);
     }
+
+    /**
+     * Get current user with extended role information
+     */
+    public function getCurrentUserWithRoles()
+    {
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return null;
+        }
+
+        $roleData = [
+            'user' => $user,
+            'isCustomer' => $user['role'] === 'customer',
+            'isVendor' => $user['role'] === 'vendor', 
+            'isAdmin' => $user['role'] === 'admin',
+            'isStaff' => $user['role'] === 'staff',
+            'customerId' => null,
+            'vendorId' => null,
+            'staffId' => null
+        ];
+
+        // Get specific role IDs
+        try {
+            $db = $this->userModel->getDb();
+            
+            if ($roleData['isCustomer']) {
+                $stmt = $db->prepare("SELECT customer_id FROM customers WHERE user_id = ?");
+                $stmt->execute([$user['user_id']]);
+                $customer = $stmt->fetch();
+                $roleData['customerId'] = $customer['customer_id'] ?? null;
+            }
+
+            if ($roleData['isVendor']) {
+                $stmt = $db->prepare("SELECT vendor_id FROM vendors WHERE user_id = ?");
+                $stmt->execute([$user['user_id']]);
+                $vendor = $stmt->fetch();
+                $roleData['vendorId'] = $vendor['vendor_id'] ?? null;
+            }
+
+            if ($roleData['isStaff']) {
+                $stmt = $db->prepare("SELECT staff_id FROM staff WHERE user_id = ?");
+                $stmt->execute([$user['user_id']]);
+                $staff = $stmt->fetch();
+                $roleData['staffId'] = $staff['staff_id'] ?? null;
+            }
+        } catch (Exception $e) {
+            error_log("Error fetching role data: " . $e->getMessage());
+        }
+
+        return $roleData;
+    }
+
+    /**
+     * Get customer ID for a user
+     */
+    public function getCustomerId($userId)
+    {
+        try {
+            $db = $this->userModel->getDb();
+            $stmt = $db->prepare("SELECT customer_id FROM customers WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $customer = $stmt->fetch();
+            return $customer['customer_id'] ?? null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get vendor ID for a user
+     */
+    public function getVendorId($userId)
+    {
+        try {
+            $db = $this->userModel->getDb();
+            $stmt = $db->prepare("SELECT vendor_id FROM vendors WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $vendor = $stmt->fetch();
+            return $vendor['vendor_id'] ?? null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
 } 
