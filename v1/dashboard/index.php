@@ -455,7 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                                 <?php endif; ?>
                             </span>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
-                                <a href="/agrimarket-erd/v1/subscription/subscription-plan.php" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                <a href="/agrimarket-erd/v1/subscription/subscription-plan.php?source=dashboard" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                                     <i class="fas fa-edit"></i>
                                     Change Plan
                                 </a>

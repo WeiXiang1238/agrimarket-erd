@@ -160,6 +160,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_plan'])) {
         }
     }
 }
+
+// Determine back link based on source
+$backLink = '/agrimarket-erd/v1/dashboard/';
+$backText = 'Back to Dashboard';
+if (isset($_GET['source']) && $_GET['source'] === 'profile') {
+    $backLink = '/agrimarket-erd/v1/user-profile/';
+    $backText = 'Back to Profile';
+}
 ?>
 
 <!DOCTYPE html>
@@ -175,9 +183,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_plan'])) {
 <body>
     <div class="subscription-container">
         <!-- Back Button -->
-        <a href="/agrimarket-erd/v1/dashboard/" class="back-button">
+        <a href="<?php echo $backLink; ?>" class="back-button">
             <i class="fas fa-arrow-left"></i>
-            Back to Dashboard
+            <?php echo $backText; ?>
         </a>
         
         <!-- Page Header -->

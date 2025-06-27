@@ -40,6 +40,14 @@ function hasSidebarPermission($permission) {
                 </a>
             </li>
 
+            <!-- User Profile (All Users) -->
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/user-profile/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/user-profile/">
+                    <i class="fas fa-user"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+
             <!-- Admin Only Sections -->
             <?php if (hasSidebarPermission('manage_users') || ($currentUser['role'] ?? '') === 'admin'): ?>
             <li class="<?php echo (strpos($_SERVER['REQUEST_URI'], '/user-management/') !== false) ? 'active' : ''; ?>">
