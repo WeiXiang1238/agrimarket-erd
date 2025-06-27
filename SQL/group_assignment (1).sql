@@ -584,6 +584,13 @@ ALTER TABLE `staff_tasks`
 ALTER TABLE `vendors`
   ADD CONSTRAINT `vendors_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `vendors_ibfk_2` FOREIGN KEY (`subscription_tier_id`) REFERENCES `subscription_tiers` (`tier_id`);
+
+-- Sample product data for testing
+INSERT INTO `products` (`product_id`, `vendor_id`, `name`, `description`, `category`, `packaging`, `base_price`, `selling_price`, `stock_quantity`, `is_discounted`, `discount_percent`, `image_path`, `is_archive`) VALUES
+(1, 2, 'Fresh Organic Tomatoes', 'Locally grown, pesticide-free tomatoes.', 'Vegetables', 'Box of 10', 8.00, 10.00, 50, 0, NULL, 'images/products/tomatoes.jpg', 0),
+(2, 2, 'Free-Range Eggs', 'Farm fresh eggs from free-range chickens.', 'Livestock', 'Carton of 12', 6.00, 8.00, 100, 1, 10.00, 'images/products/eggs.jpg', 0),
+(3, 2, 'Raw Honey', 'Pure, unprocessed honey from local bees.', 'Miscellaneous', '500g Jar', 15.00, 18.00, 30, 0, NULL, 'images/products/honey.jpg', 0);
+-- End sample product data
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

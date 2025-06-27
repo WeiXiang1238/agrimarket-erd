@@ -455,7 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                                 <?php endif; ?>
                             </span>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
-                                <a href="/agrimarket-erd/v1/subscription/subscription-plan.php" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                <a href="/agrimarket-erd/v1/subscription/subscription-plan.php?source=dashboard" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                                     <i class="fas fa-edit"></i>
                                     Change Plan
                                 </a>
@@ -608,32 +608,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
         // Navigation active state
         document.querySelectorAll('.sidebar-nav a').forEach(link => {
             link.addEventListener('click', function(e) {
+               
                 e.preventDefault();
-                
                 // Remove active class from all items
                 document.querySelectorAll('.sidebar-nav li').forEach(item => {
                     item.classList.remove('active');
                 });
-                
                 // Add active class to clicked item
                 this.parentElement.classList.add('active');
-                
                 // Load content for the selected section
                 const href = this.getAttribute('href');
                 const sectionName = this.querySelector('span').textContent;
-                
-                // Handle different navigation types
                 if (href.startsWith('/agrimarket-erd/v1/')) {
-                    // External pages - navigate directly
                     window.location.href = href;
                 } else if (href.startsWith('#')) {
-                    // Internal sections - load content dynamically
                     loadDashboardSection(href.substring(1), sectionName);
                 } else if (href.endsWith('.php')) {
-                    // PHP pages - navigate to them
                     window.location.href = href;
                 } else {
-                    // Default behavior for other links
                     console.log('Loading section:', href);
                 }
             });
@@ -659,6 +651,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
             
             // Simulate loading delay and then load appropriate content
             setTimeout(() => {
+                console.log('Section:', section);
                 switch(section) {
                     case 'dashboard':
                         loadDashboardHome();
@@ -811,15 +804,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
         }
         
         function loadShopSection() {
-            loadComingSoon('Shop Products');
+            const contentArea = document.querySelector('.dashboard-content');
+            contentArea.innerHTML = `
+                <div style="text-align:center;padding:60px 20px;">
+                    <div class="loading-spinner" style="display:inline-block;width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid #3b82f6;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                    <p style="margin-top:20px;color:#6b7280;">Loading Shop Products...</p>
+                </div>
+            `;
+            fetch('/agrimarket-erd/v1/shop/partial.php')
+                .then(res => res.text())
+                .then(html => {
+                    contentArea.innerHTML = html;
+                });
+            return;
         }
         
         function loadCartSection() {
-            loadComingSoon('Shopping Cart');
+          
         }
         
         function loadAnalytics() {
-            loadComingSoon('Analytics & Reports');
+            
         }
         
         function loadCustomerSupport() {
@@ -846,6 +851,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                 alert(`${action} functionality would be implemented here`);
             });
         });
+        
+        const shopLink = document.getElementById('sidebar-shop-link');
+        if (shopLink) {
+            shopLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadShopSection();
+                return false;
+            });
+        }
+        
     </script>
 </body>
 </html> 
