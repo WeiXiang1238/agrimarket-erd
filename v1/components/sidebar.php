@@ -117,16 +117,22 @@ function hasSidebarPermission($permission) {
             
             <!-- Shopping (Customers) -->
             <?php if (hasSidebarPermission('place_orders')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false && basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/shop/" id="sidebar-shop-link">
                     <i class="fas fa-store"></i>
                     <span>Shop Products</span>
                 </a>
             </li>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/cart/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/cart/">
+            <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'cart.php' && strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/shop/cart.php" id="sidebar-cart-link">
                     <i class="fas fa-shopping-cart"></i>
                     <span>Shopping Cart</span>
+                </a>
+            </li>
+            <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'cart.php' && strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/shop/productcomparison.php" id="sidebar-product-comparison-link">
+                    <i class="fas fa-product-comparison"></i>
+                    <span>Product Comparison</span>
                 </a>
             </li>
             <?php endif; ?>

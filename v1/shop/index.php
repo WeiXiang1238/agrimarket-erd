@@ -43,7 +43,7 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - AgriMarket Solutions</title>
+    <title>Shop - AgriMarket Solutions</title>
     <link rel="stylesheet" href="../components/main.css">
     <link rel="stylesheet" href="../dashboard/style.css">
     <link rel="stylesheet" href="style.css">
@@ -58,9 +58,11 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
         <main class="main-content">
             <!-- Include Shared Header -->
             <?php 
-            $pageTitle = 'User Management';
+            $pageTitle = 'Shop';
+            
             include '../components/header.php'; 
             ?>
+    
 <!-- Product Listing -->
 <section class="products-section" id="shop-section">
     <h2>Shop Products</h2>
@@ -125,9 +127,11 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
         <!-- Reviews will be loaded here via AJAX -->
     </div>
 </section>
+</body>
 
 <link rel="stylesheet" href="/agrimarket-erd/v1/shop/style.css">
 <script src="/agrimarket-erd/v1/shop/cart.js"></script>
 <script src="/agrimarket-erd/v1/shop/order.js"></script>
 <script src="/agrimarket-erd/v1/shop/review.js"></script>
 <script src="/agrimarket-erd/v1/shop/compare.js"></script> 
+</html>
