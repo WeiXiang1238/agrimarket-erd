@@ -326,6 +326,7 @@ if ($currentUser['role'] === 'staff' && !empty($additionalData['created_at'])) {
                     </div>
                 <?php endif; ?>
 
+                <!-- Profile picture -->
                 <div class="profile-pic-section" style="text-align:center; margin-bottom:2rem;">
                     <form method="POST" enctype="multipart/form-data" style="display:inline-block;">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
@@ -494,40 +495,6 @@ if ($currentUser['role'] === 'staff' && !empty($additionalData['created_at'])) {
                         </div>
                     </div>
 
-                    <!-- Security Settings -->
-                    <div class="profile-card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-shield-alt"></i> Security Settings</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="security-options">
-                                <div class="security-item">
-                                    <div class="security-info">
-                                        <h4>Two-Factor Authentication</h4>
-                                        <p>Add an extra layer of security to your account</p>
-                                    </div>
-                                    <button class="btn btn-outline-primary btn-sm">Enable</button>
-                                </div>
-                                
-                                <div class="security-item">
-                                    <div class="security-info">
-                                        <h4>Login Notifications</h4>
-                                        <p>Get notified when someone logs into your account</p>
-                                    </div>
-                                    <button class="btn btn-outline-primary btn-sm">Enable</button>
-                                </div>
-                                
-                                <div class="security-item">
-                                    <div class="security-info">
-                                        <h4>Session Management</h4>
-                                        <p>View and manage your active sessions</p>
-                                    </div>
-                                    <button class="btn btn-outline-secondary btn-sm">Manage</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Vendor Subscription Card (only for vendors) -->
                     <?php
                     if ($currentUser['role'] === 'vendor' && !empty($additionalData['vendor_id'])) {
@@ -572,6 +539,42 @@ if ($currentUser['role'] === 'staff' && !empty($additionalData['created_at'])) {
                         }
                     }
                     ?>
+
+                    <!-- Security Settings -->
+                    <div class="profile-card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-shield-alt"></i> Security Settings</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="security-options">
+                                <div class="security-item">
+                                    <div class="security-info">
+                                        <h4>Two-Factor Authentication</h4>
+                                        <p>Add an extra layer of security to your account</p>
+                                    </div>
+                                    <button class="btn btn-outline-primary btn-sm">Enable</button>
+                                </div>
+                                
+                                <div class="security-item">
+                                    <div class="security-info">
+                                        <h4>Login Notifications</h4>
+                                        <p>Get notified when someone logs into your account</p>
+                                    </div>
+                                    <button class="btn btn-outline-primary btn-sm">Enable</button>
+                                </div>
+                                
+                                <div class="security-item">
+                                    <div class="security-info">
+                                        <h4>Session Management</h4>
+                                        <p>View and manage your active sessions</p>
+                                    </div>
+                                    <button class="btn btn-outline-secondary btn-sm">Manage</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                 </div>
             </div>
         </main>
