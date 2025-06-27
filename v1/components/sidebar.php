@@ -110,7 +110,7 @@ function hasSidebarPermission($permission) {
             <!-- Shopping (Customers) -->
             <?php if (hasSidebarPermission('place_orders')): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
-                <a href="#/agrimarket-erd/v1/shop/partial.php" id="sidebar-shop-link">
+                <a href="/agrimarket-erd/v1/shop/" id="sidebar-shop-link">
                     <i class="fas fa-store"></i>
                     <span>Shop Products</span>
                 </a>

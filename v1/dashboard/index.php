@@ -856,8 +856,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
         if (shopLink) {
             shopLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
                 loadShopSection();
                 return false;
             });

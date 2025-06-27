@@ -1,19 +1,23 @@
 <?php
 session_start();
+require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../models/ModelLoader.php';
-require_once __DIR__ . '/../../services/PermissionService.php';
 
-// --- Auth: Only allow logged-in customers ---
-if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
-    header('Location: /agrimarket-erd/v1/auth/login/');
+// Use AuthService to get the current user
+$authService = new AuthService();
+$currentUser = $authService->getCurrentUser();
+
+if (!$currentUser) {
+    echo '<div class="alert alert-danger">You must be logged in as a customer to view the shop.</div>';
     exit;
 }
-$userId = $_SESSION['user_id'];
-$userRole = $_SESSION['role'] ?? null;
-if ($userRole !== 'customer') {
-    header('Location: /agrimarket-erd/v1/dashboard/');
+
+$roles = explode(',', $currentUser['roles'] ?? '');
+if (!in_array('customer', $roles)) {
+    echo '<div class="alert alert-danger">Only customers can access the shop.</div>';
     exit;
 }
+
 
 // --- Load models ---
 $Product = ModelLoader::load('Product');
@@ -26,38 +30,44 @@ $VendorReview = ModelLoader::load('VendorReview');
 
 // --- Fetch products, categories, and cart ---
 $categories = $ProductCategory->findAll(['is_active' => 1]);
-$products = $Product->findAll(['status' => 'active']);
+$products = $Product->findAll(['is_archive' => 0]);
 $cartItems = [];
 if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
     $cartItems = $_SESSION['cart'];
 }
 
-// --- HTML ---
 ?>
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AgriMarket Shop</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - AgriMarket Solutions</title>
+    <link rel="stylesheet" href="../components/main.css">
+    <link rel="stylesheet" href="../dashboard/style.css">
     <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="nav-left">
-            <a href="index.php" class="nav-logo">AgriMarket</a>
-            <a href="index.php">Home</a>
-            <a href="#cart-section">Cart</a>
-            <a href="#compare-section">Product Comparison</a>
-        </div>
-        <div class="nav-right">
-            <a href="/agrimarket-erd/logout.php">Logout</a>
-        </div>
-    </nav>
-
-    <!-- Product Listing -->
-    <section class="products-section" id="shop-section">
-        <h2>Shop Products</h2>
-        <div class="products-grid">
+    <div class="dashboard-container">
+        <!-- Include Shared Sidebar -->
+        <?php include '../components/sidebar.php'; ?>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Include Shared Header -->
+            <?php 
+            $pageTitle = 'User Management';
+            include '../components/header.php'; 
+            ?>
+<!-- Product Listing -->
+<section class="products-section" id="shop-section">
+    <h2>Shop Products</h2>
+    <div class="products-grid">
+        <?php if (empty($products)): ?>
+            <div class="no-products" style="color:#888;text-align:center;width:100%;padding:2rem;">No products available at the moment.</div>
+        <?php else: ?>
             <?php foreach ($products as $product): ?>
                 <?php
                     $images = $ProductImage->findAll(['product_id' => $product['product_id']]);
@@ -80,44 +90,44 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
                     </ul>
                 </div>
             <?php endforeach; ?>
-        </div>
-    </section>
+        <?php endif; ?>
+    </div>
+</section>
 
-    <!-- Cart Section -->
-    <section class="cart-section" id="cart-section">
-        <h2>Your Cart</h2>
-        <div id="cart-contents">
-            <!-- Cart items will be loaded here via AJAX -->
-        </div>
-    </section>
+<!-- Cart Section -->
+<section class="cart-section" id="cart-section">
+    <h2>Your Cart</h2>
+    <div id="cart-contents">
+        <!-- Cart items will be loaded here via AJAX -->
+    </div>
+</section>
 
-    <!-- Product Comparison Section -->
-    <section class="compare-section" id="compare-section">
-        <h2>Product Comparison</h2>
-        <div id="compare-contents">
-            <!-- Comparison table will be loaded here via JS -->
-        </div>
-    </section>
+<!-- Product Comparison Section -->
+<section class="compare-section" id="compare-section">
+    <h2>Product Comparison</h2>
+    <div id="compare-contents">
+        <!-- Comparison table will be loaded here via JS -->
+    </div>
+</section>
 
-    <!-- Order History Section -->
-    <section class="order-history-section" id="order-history-section">
-        <h2>Order History</h2>
-        <div id="order-history-contents">
-            <!-- Order history will be loaded here via AJAX -->
-        </div>
-    </section>
+<!-- Order History Section -->
+<section class="order-history-section" id="order-history-section">
+    <h2>Order History</h2>
+    <div id="order-history-contents">
+        <!-- Order history will be loaded here via AJAX -->
+    </div>
+</section>
 
-    <!-- Reviews Section -->
-    <section class="reviews-section" id="reviews-section">
-        <h2>My Reviews</h2>
-        <div id="reviews-contents">
-            <!-- Reviews will be loaded here via AJAX -->
-        </div>
-    </section>
+<!-- Reviews Section -->
+<section class="reviews-section" id="reviews-section">
+    <h2>My Reviews</h2>
+    <div id="reviews-contents">
+        <!-- Reviews will be loaded here via AJAX -->
+    </div>
+</section>
 
-    <script src="cart.js"></script>
-    <script src="order.js"></script>
-    <script src="review.js"></script>
-    <script src="compare.js"></script>
-</body>
-</html> 
+<link rel="stylesheet" href="/agrimarket-erd/v1/shop/style.css">
+<script src="/agrimarket-erd/v1/shop/cart.js"></script>
+<script src="/agrimarket-erd/v1/shop/order.js"></script>
+<script src="/agrimarket-erd/v1/shop/review.js"></script>
+<script src="/agrimarket-erd/v1/shop/compare.js"></script> 
