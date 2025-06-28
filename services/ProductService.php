@@ -315,11 +315,16 @@ class ProductService
                 $result = $stmt->execute();
                 
                 if ($result) {
-                    error_log('Product created successfully with ID: ' . $this->db->insert_id);
+                    $productId = $this->db->insert_id;
+                    error_log('Product created successfully with ID: ' . $productId);
+                    
+                    // Create notification for successful product creation
+                    $this->createProductNotification($userId, $productData['name'], $productId);
+                    
                     return [
                         'success' => true, 
                         'message' => 'Product created successfully', 
-                        'product_id' => $this->db->insert_id
+                        'product_id' => $productId
                     ];
                 } else {
                     error_log('Failed to execute insert: ' . $stmt->error);
@@ -695,6 +700,38 @@ class ProductService
     {
         // SKU not implemented in current database schema
         return false;
+    }
+    
+    /**
+     * Create notification for successful product creation
+     */
+    private function createProductNotification($userId, $productName, $productId)
+    {
+        try {
+            $message = "Product '{$productName}' has been created successfully!";
+            
+            $stmt = $this->db->prepare("
+                INSERT INTO notifications (
+                    user_id, 
+                    message, 
+                    is_read, 
+                    type, 
+                    created_at
+                ) VALUES (?, ?, 0, 'alert', NOW())
+            ");
+            
+            $stmt->bind_param('is', $userId, $message);
+            
+            $result = $stmt->execute();
+            if ($result) {
+                error_log('Notification created successfully for product: ' . $productName);
+            } else {
+                error_log('Failed to create notification: ' . $stmt->error);
+            }
+            
+        } catch (Exception $e) {
+            error_log('Error creating product notification: ' . $e->getMessage());
+        }
     }
 }
 

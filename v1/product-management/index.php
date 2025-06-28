@@ -7,9 +7,11 @@ ini_set('log_errors', 1);
 require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/ProductService.php';
+require_once __DIR__ . '/../../services/NotificationService.php';
 
 $authService = new AuthService();
 $productService = new ProductService();
+$notificationService = new NotificationService();
 
 // Require authentication and appropriate permission
 $authService->requireAuth('/agrimarket-erd/v1/auth/login/');
@@ -26,6 +28,25 @@ if (!$hasAccess) {
     exit;
 }
 $csrfToken = $authService->generateCSRFToken();
+
+// Get notifications for the current user
+$userNotifications = [];
+$unreadCount = 0;
+if ($currentUser) {
+    $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 10);
+    $unreadCount = 0;
+    foreach ($userNotifications as $notif) {
+        if (!$notif['is_read']) $unreadCount++;
+    }
+    
+    // Test notification creation (remove this after testing)
+    if (empty($userNotifications)) {
+        $notificationService->sendToUser($currentUser['user_id'], 'Test notification - Product Management page loaded!');
+        // Refresh notifications after creating test
+        $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 10);
+        $unreadCount = 1; // We just created one unread notification
+    }
+}
 
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -1424,21 +1445,6 @@ try {
                 clearProductError('productImageError');
                 return true;
             }
-        }
-
-        function showNotification(message, type) {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            // Add to page
-            document.body.appendChild(notification);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                notification.remove();
-            }, 3000);
         }
 
         // Close modal when clicking outside
