@@ -54,6 +54,36 @@ $pageTitle = $pageTitle ?? 'Dashboard';
             </div>
         </div>
         
+        <!-- Cart Icon - Only show for customers -->
+        <?php 
+        $userRoles = explode(',', $currentUser['roles'] ?? '');
+        if (in_array('customer', $userRoles)): 
+            // Load models for cart count
+            require_once __DIR__ . '/../../models/ModelLoader.php';
+            $ShoppingCart = ModelLoader::load('ShoppingCart');
+            $Customer = ModelLoader::load('Customer');
+            
+            // Get customer ID and cart count
+            $cartCount = 0;
+            $customer = $Customer->findAll(['user_id' => $currentUser['user_id']]);
+            if (!empty($customer)) {
+                $customerId = $customer[0]['customer_id'];
+                $cartItems = $ShoppingCart->findAll(['customer_id' => $customerId]);
+                foreach ($cartItems as $item) {
+                    $cartCount += $item['quantity'] ?? 0;
+                }
+            }
+        ?>
+        <div class="cart-icon" style="position: relative; margin-right: 1rem;">
+            <a href="/agrimarket-erd/v1/shop/cart.php" class="cart-btn" id="cartBtn">
+                <i class="fas fa-shopping-cart"></i>
+                <?php if ($cartCount > 0): ?>
+                    <span class="cart-badge"><?php echo $cartCount; ?></span>
+                <?php endif; ?>
+            </a>
+        </div>
+        <?php endif; ?>
+        
         <div class="user-menu">
             <div class="user-info">
                 <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='%23cbd5e1'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="User Avatar" class="user-avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 24 24\' fill=\'%23cbd5e1\'%3E%3Cpath d=\'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z\'/%3E%3C/svg%3E'"/> 
