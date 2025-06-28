@@ -434,12 +434,18 @@ class AuthService
             return null;
         }
 
+        // Get roles from user_roles table (comma-separated string)
+        $userRoles = [];
+        if (isset($user['roles']) && !empty($user['roles'])) {
+            $userRoles = explode(',', $user['roles']);
+        }
+
         $roleData = [
             'user' => $user,
-            'isCustomer' => $user['role'] === 'customer',
-            'isVendor' => $user['role'] === 'vendor', 
-            'isAdmin' => $user['role'] === 'admin',
-            'isStaff' => $user['role'] === 'staff',
+            'isCustomer' => in_array('customer', $userRoles) || $user['role'] === 'customer',
+            'isVendor' => in_array('vendor', $userRoles) || $user['role'] === 'vendor', 
+            'isAdmin' => in_array('admin', $userRoles) || $user['role'] === 'admin',
+            'isStaff' => in_array('staff', $userRoles) || $user['role'] === 'staff',
             'customerId' => null,
             'vendorId' => null,
             'staffId' => null
@@ -454,6 +460,11 @@ class AuthService
                 $stmt->execute([$user['user_id']]);
                 $customer = $stmt->fetch();
                 $roleData['customerId'] = $customer['customer_id'] ?? null;
+                
+                // Auto-create customer profile if missing
+                if ($roleData['customerId'] === null) {
+                    $roleData['customerId'] = $this->createMissingCustomerProfile($user['user_id']);
+                }
             }
 
             if ($roleData['isVendor']) {
@@ -474,6 +485,36 @@ class AuthService
         }
 
         return $roleData;
+    }
+
+    /**
+     * Create missing customer profile for a user
+     */
+    private function createMissingCustomerProfile($userId)
+    {
+        try {
+            $db = $this->userModel->getDb();
+            
+            // Get user details
+            $stmt = $db->prepare("SELECT phone FROM users WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $user = $stmt->fetch();
+            
+            // Create customer profile
+            $stmt = $db->prepare("
+                INSERT INTO customers (user_id, phone) 
+                VALUES (?, ?)
+            ");
+            $stmt->execute([$userId, $user['phone'] ?? null]);
+            
+            $customerId = $db->lastInsertId();
+            error_log("Auto-created customer profile: customer_id=$customerId for user_id=$userId");
+            
+            return $customerId;
+        } catch (Exception $e) {
+            error_log("Failed to create customer profile: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -505,6 +546,56 @@ class AuthService
             return $vendor['vendor_id'] ?? null;
         } catch (Exception $e) {
             return null;
+        }
+    }
+
+    /**
+     * Utility: Create missing customer profiles for all users with role='customer'
+     * This can be called once to fix existing data
+     */
+    public static function createMissingCustomerProfiles()
+    {
+        try {
+            global $host, $user, $pass, $dbname;
+            $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            // Find users with role='customer' who don't have customer profiles
+            $stmt = $db->prepare("
+                SELECT u.user_id, u.name, u.email, u.phone
+                FROM users u
+                LEFT JOIN customers c ON u.user_id = c.user_id
+                WHERE u.role = 'customer' 
+                AND u.is_archive = 0 
+                AND c.customer_id IS NULL
+            ");
+            $stmt->execute();
+            $missingCustomers = $stmt->fetchAll();
+            
+            $created = 0;
+            foreach ($missingCustomers as $user) {
+                $stmt = $db->prepare("
+                    INSERT INTO customers (user_id, phone) 
+                    VALUES (?, ?)
+                ");
+                if ($stmt->execute([$user['user_id'], $user['phone']])) {
+                    $created++;
+                    error_log("Created customer profile for user: {$user['name']} (ID: {$user['user_id']})");
+                }
+            }
+            
+            return [
+                'success' => true,
+                'message' => "Created $created customer profiles out of " . count($missingCustomers) . " missing profiles",
+                'created' => $created,
+                'total_missing' => count($missingCustomers)
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to create customer profiles: ' . $e->getMessage()
+            ];
         }
     }
 } 

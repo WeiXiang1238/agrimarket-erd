@@ -22,7 +22,9 @@ class SearchLog extends BaseModel
         'user_agent',
         'session_id',
         'clicked_product_id',
-        'search_duration'
+        'search_duration',
+        'click_position',
+        'clicked_at'
     ];
     
     protected $guarded = [
@@ -42,6 +44,8 @@ class SearchLog extends BaseModel
         'session_id' => 'varchar(100) DEFAULT NULL',
         'clicked_product_id' => 'int(11) DEFAULT NULL',
         'search_duration' => 'int(11) DEFAULT NULL',
+        'click_position' => 'int(11) DEFAULT NULL',
+        'clicked_at' => 'timestamp NULL DEFAULT NULL',
         'search_date' => 'timestamp NOT NULL DEFAULT current_timestamp()'
     ];
     

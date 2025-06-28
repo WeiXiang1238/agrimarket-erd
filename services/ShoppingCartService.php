@@ -207,7 +207,7 @@ class ShoppingCartService
                 if ($item['image_path'] && !str_starts_with($item['image_path'], 'http')) {
                     $item['image_url'] = '/agrimarket-erd/' . ltrim($item['image_path'], '/');
                 } else {
-                    $item['image_url'] = $item['image_path'] ?: '/agrimarket-erd/uploads/products/default.png';
+                    $item['image_url'] = $item['image_path'] ?: '/uploads/products/default-product.jpg';
                 }
             }
             
@@ -226,6 +226,59 @@ class ShoppingCartService
             
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Failed to fetch cart items: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Get cart summary (totals only) for a customer
+     */
+    public function getCartSummary($customerId)
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    sc.quantity,
+                    p.selling_price,
+                    CASE 
+                        WHEN p.stock_quantity >= sc.quantity THEN 'available'
+                        ELSE 'out_of_stock'
+                    END as availability_status
+                FROM shopping_cart sc
+                LEFT JOIN products p ON sc.product_id = p.product_id
+                WHERE sc.customer_id = ? AND p.is_archive = 0
+            ");
+            
+            $stmt->execute([$customerId]);
+            $items = $stmt->fetchAll();
+            
+            // Calculate totals (reusing logic from getCartItems)
+            $totalItems = 0;
+            $totalAmount = 0;
+            $availableItems = 0;
+            
+            foreach ($items as $item) {
+                $totalItems += $item['quantity'];
+                if ($item['availability_status'] === 'available') {
+                    $subtotal = $item['quantity'] * $item['selling_price'];
+                    $totalAmount += $subtotal;
+                    $availableItems += $item['quantity'];
+                }
+            }
+            
+            return [
+                'success' => true,
+                'summary' => [
+                    'total_items' => $totalItems,
+                    'available_items' => $availableItems,
+                    'total_amount' => $totalAmount,
+                    'shipping_cost' => 10.00, // Default shipping
+                    'tax_amount' => $totalAmount * 0.06, // 6% tax
+                    'final_amount' => $totalAmount + 10.00 + ($totalAmount * 0.06)
+                ]
+            ];
+            
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Failed to fetch cart summary: ' . $e->getMessage()];
         }
     }
     
@@ -290,7 +343,7 @@ class ShoppingCartService
                 SELECT 
                     p.*,
                     v.business_name as vendor_name,
-                    v.contact_email as vendor_email,
+                    vu.email as vendor_email,
                     pc.name as category_name,
                     COALESCE(AVG(r.rating), 0) as avg_rating,
                     COUNT(r.review_id) as review_count,
@@ -300,6 +353,7 @@ class ShoppingCartService
                     END as stock_status
                 FROM products p
                 LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
+                LEFT JOIN users vu ON v.user_id = vu.user_id
                 LEFT JOIN product_categories pc ON p.category_id = pc.category_id
                 LEFT JOIN reviews r ON p.product_id = r.product_id
                 WHERE p.product_id IN ($placeholders) AND p.is_archive = 0

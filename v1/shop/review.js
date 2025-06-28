@@ -1,226 +1,289 @@
-// Review functionality for AgriMarket Shop
-document.addEventListener('DOMContentLoaded', function() {
-    // Load reviews on page load
-    loadReviews();
-    
-    // Initialize review form submission
-    initializeReviewForm();
+// Customer Review Management Script
+let currentOrderItems = [];
+let currentOrderId = null;
+let currentVendorId = null;
+
+// Initialize review functionality when page loads
+document.addEventListener('DOMContentLoaded', function () {
+    loadCustomerReviews();
+    setupReviewEventListeners();
 });
 
-function loadReviews() {
-    const reviewsContents = document.getElementById('reviews-contents');
-    if (!reviewsContents) return;
-    
-    // Show loading state
-    reviewsContents.innerHTML = '<div class="loading">Loading reviews...</div>';
-    
-    fetch('/agrimarket-erd/v1/shop/review.php?action=get_reviews')
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            displayReviews(data.reviews);
-        } else {
-            reviewsContents.innerHTML = '<p class="error">Failed to load reviews</p>';
+// Setup event listeners
+function setupReviewEventListeners() {
+    // Rating star interactions
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('rating-star')) {
+            handleStarClick(e.target);
         }
-    })
-    .catch(error => {
-        console.error('Error loading reviews:', error);
-        reviewsContents.innerHTML = '<p class="error">An error occurred while loading reviews</p>';
+    });
+
+    // Star hover effects
+    document.addEventListener('mouseover', function (e) {
+        if (e.target.classList.contains('rating-star')) {
+            handleStarHover(e.target);
+        }
+    });
+
+    document.addEventListener('mouseout', function (e) {
+        if (e.target.classList.contains('rating-star')) {
+            clearStarHover(e.target);
+        }
     });
 }
 
-function displayReviews(reviews) {
-    const reviewsContents = document.getElementById('reviews-contents');
-    if (!reviewsContents) return;
-    
-    if (!reviews || reviews.length === 0) {
-        reviewsContents.innerHTML = '<p class="empty-reviews">No reviews found</p>';
-        return;
+// Load customer's reviews
+async function loadCustomerReviews() {
+    try {
+        showLoading('reviews-contents');
+
+        // Get customer's reviews
+        const response = await fetch(`review.php?action=get_customer_reviews`);
+        const data = await response.json();
+
+        if (data.success) {
+            displayCustomerReviews(data.reviews || []);
+        } else {
+            showError('reviews-contents', data.message || 'Failed to load reviews');
+        }
+    } catch (error) {
+        console.error('Error loading reviews:', error);
+        showError('reviews-contents', 'Error loading reviews');
     }
-    
-    let html = '<div class="review-list">';
-    
-    reviews.forEach(review => {
-        const reviewDate = new Date(review.created_at).toLocaleDateString();
-        const stars = generateStars(review.rating);
-        
-        html += `
-            <div class="review-item">
-                <div class="review-header">
-                    <h4>${review.product_name || 'Product Review'}</h4>
-                    <div class="review-rating">
-                        ${stars}
-                        <span class="rating-text">${review.rating}/5</span>
-                    </div>
-                </div>
-                <div class="review-content">
-                    ${review.title ? `<h5>${review.title}</h5>` : ''}
-                    <p>${review.comment || 'No comment provided'}</p>
-                    ${review.pros ? `<p><strong>Pros:</strong> ${review.pros}</p>` : ''}
-                    ${review.cons ? `<p><strong>Cons:</strong> ${review.cons}</p>` : ''}
-                </div>
-                <div class="review-footer">
-                    <span class="review-date">${reviewDate}</span>
-                    <div class="review-actions">
-                        <button class="btn btn-sm btn-primary" onclick="editReview(${review.review_id})">
-                            Edit
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteReview(${review.review_id})">
-                            Delete
-                        </button>
-                    </div>
-                </div>
+}
+
+// Display customer reviews
+function displayCustomerReviews(reviews) {
+    const container = document.getElementById('reviews-contents');
+
+    if (!reviews || reviews.length === 0) {
+        container.innerHTML = `
+            <div class="no-data">
+                <i class="fas fa-star"></i>
+                <h3>No Reviews Yet</h3>
+                <p>You haven't written any reviews yet. Check your delivered orders to leave reviews!</p>
+                <button class="btn btn-primary" onclick="loadDeliveredOrders()">
+                    <i class="fas fa-clipboard-list"></i> View Orders to Review
+                </button>
             </div>
         `;
-    });
-    
-    html += '</div>';
-    reviewsContents.innerHTML = html;
-}
-
-function generateStars(rating) {
-    let stars = '';
-    for (let i = 1; i <= 5; i++) {
-        if (i <= rating) {
-            stars += '<i class="fas fa-star text-warning"></i>';
-        } else {
-            stars += '<i class="far fa-star text-muted"></i>';
-        }
-    }
-    return stars;
-}
-
-function initializeReviewForm() {
-    const reviewForm = document.getElementById('review-form');
-    if (reviewForm) {
-        reviewForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitReview(this);
-        });
-    }
-}
-
-function submitReview(form) {
-    const formData = new FormData(form);
-    formData.append('action', 'submit_review');
-    
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    
-    // Show loading state
-    submitBtn.textContent = 'Submitting...';
-    submitBtn.disabled = true;
-    
-    fetch('/agrimarket-erd/v1/shop/review.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Review submitted successfully!', 'success');
-            form.reset();
-            loadReviews(); // Reload reviews
-        } else {
-            showNotification(data.message || 'Failed to submit review', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('An error occurred while submitting review', 'error');
-    })
-    .finally(() => {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    });
-}
-
-function editReview(reviewId) {
-    // Redirect to edit review page
-    window.location.href = `/agrimarket-erd/v1/shop/review.php?action=edit&review_id=${reviewId}`;
-}
-
-function deleteReview(reviewId) {
-    if (!confirm('Are you sure you want to delete this review?')) {
         return;
     }
-    
-    const formData = new FormData();
-    formData.append('action', 'delete_review');
-    formData.append('review_id', reviewId);
-    
-    fetch('/agrimarket-erd/v1/shop/review.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Review deleted successfully!', 'success');
-            loadReviews(); // Reload reviews
+
+    container.innerHTML = `
+        <div class="reviews-header">
+            <h3>My Reviews (${reviews.length})</h3>
+            <button class="btn btn-primary" onclick="loadDeliveredOrders()">
+                <i class="fas fa-plus"></i> Write New Review
+            </button>
+        </div>
+        <div class="reviews-list">
+            ${reviews.map(review => createReviewCard(review)).join('')}
+        </div>
+    `;
+}
+
+// Create review card HTML
+function createReviewCard(review) {
+    const type = review.vendor_review_id ? 'vendor' : 'product';
+    const itemName = type === 'product' ? review.product_name : review.vendor_name;
+    const rating = review.rating || 0;
+
+    return `
+        <div class="review-card">
+            <div class="review-header">
+                <div class="review-item-info">
+                    <h4>${escapeHtml(itemName)}</h4>
+                    <span class="review-type-badge">${type === 'product' ? 'Product' : 'Vendor'} Review</span>
+                </div>
+                <div class="review-rating">
+                    ${generateStars(rating)}
+                    <span class="rating-text">${rating}/5</span>
+                </div>
+            </div>
+            
+            ${review.title ? `<h5 class="review-title">${escapeHtml(review.title)}</h5>` : ''}
+            
+            <div class="review-content">
+                <p>${escapeHtml(review.comment || 'No comment provided')}</p>
+                
+                ${review.pros ? `
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h6><i class="fas fa-thumbs-up"></i> Pros</h6>
+                            <p>${escapeHtml(review.pros)}</p>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${review.cons ? `
+                    <div class="pros-cons">
+                        <div class="cons">
+                            <h6><i class="fas fa-thumbs-down"></i> Cons</h6>
+                            <p>${escapeHtml(review.cons)}</p>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="review-meta">
+                <span class="review-date">
+                    <i class="fas fa-calendar"></i>
+                    ${formatDate(review.created_at)}
+                </span>
+                <span class="review-status status-${review.is_approved ? 'approved' : 'pending'}">
+                    <i class="fas fa-${review.is_approved ? 'check-circle' : 'clock'}"></i>
+                    ${review.is_approved ? 'Approved' : 'Pending Approval'}
+                </span>
+                ${review.is_verified_purchase ? `
+                    <span class="verified-badge">
+                        <i class="fas fa-shield-alt"></i> Verified Purchase
+                    </span>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Load delivered orders for review
+async function loadDeliveredOrders() {
+    // Redirect to order management page with review intent
+    window.location.href = '../order-management/?show_review_modal=true';
+}
+
+// Handle star rating clicks
+function handleStarClick(star) {
+    const rating = parseInt(star.dataset.rating);
+    const container = star.closest('.stars');
+    const stars = container.querySelectorAll('.rating-star');
+
+    // Update visual stars
+    stars.forEach((s, index) => {
+        if (index < rating) {
+            s.classList.remove('far');
+            s.classList.add('fas');
+            s.style.color = '#f59e0b';
         } else {
-            showNotification(data.message || 'Failed to delete review', 'error');
+            s.classList.remove('fas');
+            s.classList.add('far');
+            s.style.color = '#d1d5db';
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('An error occurred while deleting review', 'error');
     });
+
+    // Store rating
+    container.dataset.rating = rating;
+}
+
+// Handle star hover
+function handleStarHover(star) {
+    const rating = parseInt(star.dataset.rating);
+    const container = star.closest('.stars');
+    const stars = container.querySelectorAll('.rating-star');
+
+    stars.forEach((s, index) => {
+        if (index < rating) {
+            s.style.color = '#fbbf24';
+        }
+    });
+}
+
+// Clear star hover
+function clearStarHover(star) {
+    const container = star.closest('.stars');
+    const currentRating = parseInt(container.dataset.rating);
+    const stars = container.querySelectorAll('.rating-star');
+
+    stars.forEach((s, index) => {
+        if (index < currentRating) {
+            s.style.color = '#f59e0b';
+        } else {
+            s.style.color = '#d1d5db';
+        }
+    });
+}
+
+// Utility functions
+function generateStars(rating, size = '') {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+    let html = '';
+
+    // Full stars
+    for (let i = 0; i < fullStars; i++) {
+        html += `<i class="fas fa-star ${size}"></i>`;
+    }
+
+    // Half star
+    if (hasHalfStar) {
+        html += `<i class="fas fa-star-half-alt ${size}"></i>`;
+    }
+
+    // Empty stars
+    for (let i = 0; i < emptyStars; i++) {
+        html += `<i class="far fa-star ${size}"></i>`;
+    }
+
+    return html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+function showLoading(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = `
+            <div class="loading-indicator">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading...</p>
+            </div>
+        `;
+    }
+}
+
+function showError(containerId, message) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>${escapeHtml(message)}</p>
+            </div>
+        `;
+    }
 }
 
 function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    
-    // Add styles
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 5px;
-        color: white;
-        font-weight: 500;
-        z-index: 10000;
-        max-width: 300px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+        <span>${escapeHtml(message)}</span>
+        <button class="notification-close" onclick="this.parentElement.remove()">&times;</button>
     `;
-    
-    // Set background color based on type
-    switch(type) {
-        case 'success':
-            notification.style.backgroundColor = '#10b981';
-            break;
-        case 'error':
-            notification.style.backgroundColor = '#ef4444';
-            break;
-        case 'warning':
-            notification.style.backgroundColor = '#f59e0b';
-            break;
-        default:
-            notification.style.backgroundColor = '#3b82f6';
-    }
-    
+
     // Add to page
     document.body.appendChild(notification);
-    
-    // Animate in
+
+    // Auto remove after 5 seconds
     setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 100);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
 } 
