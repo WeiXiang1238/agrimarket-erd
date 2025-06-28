@@ -1,9 +1,11 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../services/OrderManagementService.php';
+require_once __DIR__ . '/../../services/NotificationService.php';
 
 // Initialize order management service
 $orderMgmtService = new OrderManagementService();
+$notificationService = new NotificationService();
 
 // Initialize page data
 $initResult = $orderMgmtService->initializeOrderManagement();
@@ -21,6 +23,27 @@ $pageTitle = $initResult['pageTitle'];
 
 // Set currentUser for sidebar
 $currentUser = $userRoles['user'];
+
+// Get notifications for the current user
+$userNotifications = [];
+$unreadCount = 0;
+if ($currentUser) {
+    $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 10);
+    $unreadCount = 0;
+    foreach ($userNotifications as $notif) {
+        if (!$notif['is_read']) $unreadCount++;
+    }
+    
+    // Add a test notification for order management (remove this in production)
+    // if (empty($userNotifications)) {
+    //     $notificationService->createNotification(
+    //         $currentUser['user_id'],
+    //         'Order Management Test',
+    //         'Order management notifications are working correctly!',
+    //         'order'
+    //     );
+    // }
+}
 
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

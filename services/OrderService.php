@@ -6,6 +6,7 @@ require_once __DIR__ . '/../models/OrderItem.php';
 require_once __DIR__ . '/../models/Customer.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Payment.php';
+require_once __DIR__ . '/NotificationService.php';
 
 /**
  * OrderService
@@ -14,6 +15,7 @@ require_once __DIR__ . '/../models/Payment.php';
 class OrderService
 {
     private $db;
+    private $notificationService;
     
     public function __construct()
     {
@@ -25,6 +27,8 @@ class OrderService
         } catch (PDOException $e) {
             throw new Exception("Database connection failed: " . $e->getMessage());
         }
+        
+        $this->notificationService = new NotificationService();
     }
     
     /**
@@ -113,6 +117,46 @@ class OrderService
             $this->clearCart($customerId);
             
             $this->db->commit();
+            
+            // Create notifications for customer and vendors
+            try {
+                // Get customer user ID for notification
+                $stmt = $this->db->prepare("SELECT user_id FROM customers WHERE customer_id = ?");
+                $stmt->execute([$customerId]);
+                $customerUserId = $stmt->fetch()['user_id'];
+                
+                // Create notification for customer
+                if ($customerUserId) {
+                    $this->notificationService->createNotification(
+                        $customerUserId, 
+                        'Order Placed Successfully', 
+                        'Your order has been placed successfully. You will receive updates on your order status.',
+                        'order'
+                    );
+                }
+                
+                // Create notifications for vendors
+                foreach ($createdOrders as $order) {
+                    $vendorId = $order['vendor_id'];
+                    
+                    // Get vendor user ID
+                    $stmt = $this->db->prepare("SELECT user_id FROM vendors WHERE vendor_id = ?");
+                    $stmt->execute([$vendorId]);
+                    $vendorUserId = $stmt->fetch()['user_id'];
+                    
+                    if ($vendorUserId) {
+                        $this->notificationService->createNotification(
+                            $vendorUserId,
+                            'New Order Received',
+                            'You have received a new order #' . $order['order_id'] . ' with total amount $' . number_format($order['total_amount'], 2),
+                            'order'
+                        );
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('Error creating order notifications: ' . $e->getMessage());
+                // Don't fail the order creation if notifications fail
+            }
             
             return [
                 'success' => true,
@@ -565,6 +609,47 @@ $orders = $stmt->fetchAll();
             $stmt->execute($params);
             
             if ($stmt->rowCount() > 0) {
+                // Create notification for customer about status update
+                try {
+                    // Get order details to find customer
+                    $stmt = $this->db->prepare("
+                        SELECT o.customer_id, c.user_id, u.name as customer_name
+                        FROM orders o
+                        LEFT JOIN customers c ON o.customer_id = c.customer_id
+                        LEFT JOIN users u ON c.user_id = u.user_id
+                        WHERE o.order_id = ?
+                    ");
+                    $stmt->execute([$orderId]);
+                    $orderInfo = $stmt->fetch();
+                    
+                    if ($orderInfo && $orderInfo['user_id']) {
+                        $statusMessages = [
+                            'Pending' => 'Your order is pending confirmation',
+                            'Confirmed' => 'Your order has been confirmed and is being processed',
+                            'Processing' => 'Your order is being processed and prepared for shipping',
+                            'Shipped' => 'Your order has been shipped and is on its way',
+                            'Delivered' => 'Your order has been delivered successfully',
+                            'Cancelled' => 'Your order has been cancelled'
+                        ];
+                        
+                        $message = $statusMessages[$status] ?? "Your order status has been updated to: $status";
+                        
+                        if ($trackingNumber) {
+                            $message .= " Tracking number: $trackingNumber";
+                        }
+                        
+                        $this->notificationService->createNotification(
+                            $orderInfo['user_id'],
+                            'Order Status Updated',
+                            $message,
+                            'order'
+                        );
+                    }
+                } catch (Exception $e) {
+                    error_log('Error creating status update notification: ' . $e->getMessage());
+                    // Don't fail the status update if notification fails
+                }
+                
                 return ['success' => true, 'message' => 'Order status updated successfully'];
             } else {
                 return ['success' => false, 'message' => 'Order not found or no changes made'];
@@ -627,6 +712,31 @@ $orders = $stmt->fetchAll();
             }
             
             $this->db->commit();
+            
+            // Create notification for vendor about order cancellation
+            try {
+                // Get order details to find vendor
+                $stmt = $this->db->prepare("
+                    SELECT o.vendor_id, v.user_id, v.business_name
+                    FROM orders o
+                    LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+                    WHERE o.order_id = ?
+                ");
+                $stmt->execute([$orderId]);
+                $orderInfo = $stmt->fetch();
+                
+                if ($orderInfo && $orderInfo['user_id']) {
+                    $this->notificationService->createNotification(
+                        $orderInfo['user_id'],
+                        'Order Cancelled',
+                        "Order #$orderId has been cancelled by the customer. Reason: $reason",
+                        'order'
+                    );
+                }
+            } catch (Exception $e) {
+                error_log('Error creating cancellation notification: ' . $e->getMessage());
+                // Don't fail the cancellation if notification fails
+            }
             
             return ['success' => true, 'message' => 'Order cancelled successfully'];
             

@@ -21,6 +21,25 @@ class NotificationService {
         return $stmt->execute([$userId, $message]);
     }
 
+    // Create a notification with more details
+    public function createNotification($userId, $title, $message, $type = 'order') {
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO notifications (
+                    user_id, 
+                    message, 
+                    is_read, 
+                    type, 
+                    created_at
+                ) VALUES (?, ?, 0, ?, NOW())
+            ");
+            return $stmt->execute([$userId, $message, $type]);
+        } catch (Exception $e) {
+            error_log('Error creating notification: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     // Fetch notifications for a user (most recent first)
     public function getUserNotifications($userId, $limit = 10) {
         $limit = (int)$limit; // Ensure it's an integer
