@@ -286,6 +286,294 @@ function getRevenueAmount($currentUser) {
         return 0;
     }
 }
+
+// Function to get latest order information for current user
+function getLatestOrderInfo($currentUser) {
+    if (!$currentUser) return 'No orders today';
+    
+    try {
+        global $host, $user, $pass, $dbname;
+        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // If user has view_analytics permission (admin), get latest platform order
+        if (hasPermission('view_analytics')) {
+            $stmt = $db->prepare("
+                SELECT order_id, status, order_date
+                FROM orders 
+                WHERE is_archive = 0 
+                AND order_date >= CURDATE()
+                ORDER BY order_date DESC
+                LIMIT 1
+            ");
+            $stmt->execute();
+            $latestOrder = $stmt->fetch();
+            
+            if ($latestOrder) {
+                $timeAgo = getTimeAgo($latestOrder['order_date']);
+                return "Order #{$latestOrder['order_id']} - {$timeAgo}";
+            }
+            return 'No orders today';
+        }
+        
+        // If user is a vendor, get their latest order
+        if ($currentUser['role'] == 'vendor') {
+            $vendorModel = new Vendor();
+            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($vendor)) {
+                $vendorId = $vendor[0]['vendor_id'];
+                $stmt = $db->prepare("
+                    SELECT order_id, status, order_date
+                    FROM orders 
+                    WHERE vendor_id = ? 
+                    AND is_archive = 0 
+                    AND order_date >= CURDATE()
+                    ORDER BY order_date DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$vendorId]);
+                $latestOrder = $stmt->fetch();
+                
+                if ($latestOrder) {
+                    $timeAgo = getTimeAgo($latestOrder['order_date']);
+                    return "Order #{$latestOrder['order_id']} - {$timeAgo}";
+                }
+            }
+        }
+        
+        // If user is a customer, get their latest order
+        if ($currentUser['role'] == 'customer') {
+            $customerModel = new Customer();
+            $customer = $customerModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($customer)) {
+                $customerId = $customer[0]['customer_id'];
+                $stmt = $db->prepare("
+                    SELECT order_id, status, order_date
+                    FROM orders 
+                    WHERE customer_id = ? 
+                    AND is_archive = 0 
+                    AND order_date >= CURDATE()
+                    ORDER BY order_date DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$customerId]);
+                $latestOrder = $stmt->fetch();
+                
+                if ($latestOrder) {
+                    $timeAgo = getTimeAgo($latestOrder['order_date']);
+                    return "Order #{$latestOrder['order_id']} - {$timeAgo}";
+                }
+            }
+        }
+        
+        return 'No orders today';
+        
+    } catch (Exception $e) {
+        error_log('Error getting latest order info: ' . $e->getMessage());
+        return 'No orders today';
+    }
+}
+
+// Helper function to get time ago
+function getTimeAgo($datetime) {
+    $time = strtotime($datetime);
+    $now = time();
+    $diff = $now - $time;
+    
+    if ($diff < 60) {
+        return 'Just now';
+    } elseif ($diff < 3600) {
+        $minutes = floor($diff / 60);
+        return $minutes . ' min ago';
+    } elseif ($diff < 86400) {
+        $hours = floor($diff / 3600);
+        return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
+    } else {
+        $days = floor($diff / 86400);
+        return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
+    }
+}
+
+// Function to get latest order time for activity display
+function getLatestOrderTime($currentUser) {
+    if (!$currentUser) return 'No recent activity';
+    
+    try {
+        global $host, $user, $pass, $dbname;
+        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Get latest order date based on user role
+        if (hasPermission('view_analytics')) {
+            $stmt = $db->prepare("
+                SELECT order_date
+                FROM orders 
+                WHERE is_archive = 0 
+                ORDER BY order_date DESC
+                LIMIT 1
+            ");
+            $stmt->execute();
+            $latestOrder = $stmt->fetch();
+        } elseif ($currentUser['role'] == 'vendor') {
+            $vendorModel = new Vendor();
+            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($vendor)) {
+                $vendorId = $vendor[0]['vendor_id'];
+                $stmt = $db->prepare("
+                    SELECT order_date
+                    FROM orders 
+                    WHERE vendor_id = ? 
+                    AND is_archive = 0 
+                    ORDER BY order_date DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$vendorId]);
+                $latestOrder = $stmt->fetch();
+            }
+        } elseif ($currentUser['role'] == 'customer') {
+            $customerModel = new Customer();
+            $customer = $customerModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($customer)) {
+                $customerId = $customer[0]['customer_id'];
+                $stmt = $db->prepare("
+                    SELECT order_date
+                    FROM orders 
+                    WHERE customer_id = ? 
+                    AND is_archive = 0 
+                    ORDER BY order_date DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$customerId]);
+                $latestOrder = $stmt->fetch();
+            }
+        }
+        
+        if (isset($latestOrder) && $latestOrder) {
+            return getTimeAgo($latestOrder['order_date']);
+        }
+        
+        return 'No recent activity';
+        
+    } catch (Exception $e) {
+        error_log('Error getting latest order time: ' . $e->getMessage());
+        return 'No recent activity';
+    }
+}
+
+// Function to get latest product information for current user
+function getLatestProductInfo($currentUser) {
+    if (!$currentUser) return 'No products added';
+    
+    try {
+        global $host, $user, $pass, $dbname;
+        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // If user has manage_products permission (admin), get latest platform product
+        if (hasPermission('manage_products')) {
+            $stmt = $db->prepare("
+                SELECT product_id, name, created_at
+                FROM products 
+                WHERE is_archive = 0 
+                ORDER BY created_at DESC
+                LIMIT 1
+            ");
+            $stmt->execute();
+            $latestProduct = $stmt->fetch();
+            
+            if ($latestProduct) {
+                return $latestProduct['name'];
+            }
+            return 'No products added';
+        }
+        
+        // If user is a vendor, get their latest product
+        if ($currentUser['role'] == 'vendor') {
+            $vendorModel = new Vendor();
+            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($vendor)) {
+                $vendorId = $vendor[0]['vendor_id'];
+                $stmt = $db->prepare("
+                    SELECT product_id, name, created_at
+                    FROM products 
+                    WHERE vendor_id = ? 
+                    AND is_archive = 0 
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$vendorId]);
+                $latestProduct = $stmt->fetch();
+                
+                if ($latestProduct) {
+                    return $latestProduct['name'];
+                }
+            }
+        }
+        
+        return 'No products added';
+        
+    } catch (Exception $e) {
+        error_log('Error getting latest product info: ' . $e->getMessage());
+        return 'No products added';
+    }
+}
+
+// Function to get latest product time for activity display
+function getLatestProductTime($currentUser) {
+    if (!$currentUser) return 'No recent activity';
+    
+    try {
+        global $host, $user, $pass, $dbname;
+        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Get latest product date based on user role
+        if (hasPermission('manage_products')) {
+            $stmt = $db->prepare("
+                SELECT created_at
+                FROM products 
+                WHERE is_archive = 0 
+                ORDER BY created_at DESC
+                LIMIT 1
+            ");
+            $stmt->execute();
+            $latestProduct = $stmt->fetch();
+        } elseif ($currentUser['role'] == 'vendor') {
+            $vendorModel = new Vendor();
+            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($vendor)) {
+                $vendorId = $vendor[0]['vendor_id'];
+                $stmt = $db->prepare("
+                    SELECT created_at
+                    FROM products 
+                    WHERE vendor_id = ? 
+                    AND is_archive = 0 
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ");
+                $stmt->execute([$vendorId]);
+                $latestProduct = $stmt->fetch();
+            }
+        }
+        
+        if (isset($latestProduct) && $latestProduct) {
+            return getTimeAgo($latestProduct['created_at']);
+        }
+        
+        return 'No recent activity';
+        
+    } catch (Exception $e) {
+        error_log('Error getting latest product time: ' . $e->getMessage());
+        return 'No recent activity';
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -587,42 +875,42 @@ function getRevenueAmount($currentUser) {
                     
                     <!-- Subscription Tier Card for Vendors -->
                     <?php if ($currentUser['role'] == 'vendor'): ?>
-                    <?php $subscriptionDetails = getVendorSubscriptionDetails($currentUser); ?>
-                    <?php if ($subscriptionDetails): ?>
-                    <div class="stat-card">
-                        <div class="stat-icon subscription" style="background: <?php echo getSubscriptionTierColor($subscriptionDetails['tier_name']); ?>; color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
-                            <i class="fas fa-gem"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3><?php echo htmlspecialchars($subscriptionDetails['tier_name']) . ' Tier'; ?></h3>
-                            <p><?php echo htmlspecialchars($subscriptionDetails['description']); ?></p>
-                            <span class="stat-change <?php echo $subscriptionDetails['is_active'] ? 'positive' : 'negative'; ?>">
-                                RM <?php echo number_format($subscriptionDetails['monthly_fee'], 2); ?> / month
-                                <?php if ($subscriptionDetails['due_date']): ?>
-                                    • Due: <?php echo date('M j', strtotime($subscriptionDetails['due_date'])); ?>
-                                <?php endif; ?>
-                            </span>
-                            <div class="subscription-actions" style="margin-top: 0.5rem;">
-                                <a href="/agrimarket-erd/v1/subscription/subscription-plan.php?source=dashboard" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                                    <i class="fas fa-edit"></i>
-                                    Change Plan
-                                </a>
+                        <?php $subscriptionDetails = getVendorSubscriptionDetails($currentUser); ?>
+                        <?php if ($subscriptionDetails): ?>
+                            <div class="stat-card">
+                                <div class="stat-icon subscription" style="background: <?php echo getSubscriptionTierColor($subscriptionDetails['tier_name']); ?>; color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
+                                    <i class="fas fa-gem"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3><?php echo htmlspecialchars($subscriptionDetails['tier_name']) . ' Tier'; ?></h3>
+                                    <p><?php echo htmlspecialchars($subscriptionDetails['description']); ?></p>
+                                    <span class="stat-change <?php echo $subscriptionDetails['is_active'] ? 'positive' : 'negative'; ?>">
+                                        RM <?php echo number_format($subscriptionDetails['monthly_fee'], 2); ?> / month
+                                        <?php if ($subscriptionDetails['due_date']): ?>
+                                            • Due: <?php echo date('M j', strtotime($subscriptionDetails['due_date'])); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                    <div class="subscription-actions" style="margin-top: 0.5rem;">
+                                        <a href="/agrimarket-erd/v1/subscription/subscription-plan.php?source=dashboard" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                            <i class="fas fa-edit"></i>
+                                            Change Plan
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <!-- Debug: Show if subscription details are not found -->
-                    <div class="stat-card">
-                        <div class="stat-icon subscription" style="background: linear-gradient(135deg, #6b7280, #4b5563); color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
-                            <i class="fas fa-gem"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>No Subscription</h3>
-                            <p>Subscription details not found</p>
-                            <span class="stat-change neutral">Contact support</span>
-                        </div>
-                    </div>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <!-- Debug: Show if subscription details are not found -->
+                            <div class="stat-card">
+                                <div class="stat-icon subscription" style="background: linear-gradient(135deg, #6b7280, #4b5563); color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
+                                    <i class="fas fa-gem"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3>No Subscription</h3>
+                                    <p>Subscription details not found</p>
+                                    <span class="stat-change neutral">Contact support</span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
 
 
@@ -634,7 +922,7 @@ function getRevenueAmount($currentUser) {
                     <div class="content-card">
                         <div class="card-header">
                             <h3>Recent Activities</h3>
-                            <button class="btn-secondary">View All</button>
+                            <!-- <button class="btn-secondary">View All</button> -->
                         </div>
                         <div class="card-content">
                             <div class="activity-list">
@@ -656,8 +944,8 @@ function getRevenueAmount($currentUser) {
                                         <i class="fas fa-shopping-bag"></i>
                                     </div>
                                     <div class="activity-details">
-                                        <p><strong><?php echo hasPermission('manage_orders') ? 'New order placed:' : 'Order update:'; ?></strong> Order #12345</p>
-                                        <span class="activity-time">5 minutes ago</span>
+                                        <p><strong><?php echo hasPermission('manage_orders') ? 'New order placed:' : 'Order update:'; ?></strong> <?php echo getLatestOrderInfo($currentUser); ?></p>
+                                        <span class="activity-time"><?php echo getLatestOrderTime($currentUser); ?></span>
                                     </div>
                                 </div>
                                 <?php endif; ?>
@@ -680,8 +968,8 @@ function getRevenueAmount($currentUser) {
                                         <i class="fas fa-plus-circle"></i>
                                     </div>
                                     <div class="activity-details">
-                                        <p><strong>New product added:</strong> Organic Tomatoes</p>
-                                        <span class="activity-time">2 hours ago</span>
+                                        <p><strong>New product added:</strong> <?php echo getLatestProductInfo($currentUser); ?></p>
+                                        <span class="activity-time"><?php echo getLatestProductTime($currentUser); ?></span>
                                     </div>
                                 </div>
                                 <?php endif; ?>
