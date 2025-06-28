@@ -554,7 +554,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                                 <?php endif; ?>
                                 
                                 <?php if (hasPermission('manage_products')): ?>
-                                <button class="action-btn success">
+                                <button class="action-btn success" onclick="window.location.href='/agrimarket-erd/v1/product-management/'">
                                     <i class="fas fa-plus-circle"></i>
                                     <span>Add Product</span>
                                 </button>
