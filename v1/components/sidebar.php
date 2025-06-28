@@ -2,6 +2,18 @@
 <link rel="stylesheet" href="/agrimarket-erd/v1/components/sidebar.css">
 
 <?php
+// Ensure session is started and get current user if not already set
+if (!isset($_SESSION)) {
+    session_start();
+}
+
+// Get current user if not already set
+if (!isset($currentUser) && isset($_SESSION['user_id'])) {
+    require_once __DIR__ . '/../../services/AuthService.php';
+    $authService = new AuthService();
+    $currentUser = $authService->getCurrentUser();
+}
+
 // Include PermissionService if not already included
 if (!class_exists('PermissionService')) {
     require_once __DIR__ . '/../../services/PermissionService.php';
@@ -18,7 +30,9 @@ function hasSidebarPermission($permission) {
     global $userPermissions, $currentUser;
     // Check permission or fallback to role check for admin
     return isset($userPermissions[$permission]) || 
-           ($permission === 'manage_users' && ($currentUser['role'] ?? '') === 'admin');
+           ($permission === 'manage_users' && ($currentUser['role'] ?? '') === 'admin') ||
+           // Allow customers to see their orders
+           ($permission === 'view_orders' && ($currentUser['role'] ?? '') === 'customer');
 }
 ?>
 
@@ -85,6 +99,15 @@ function hasSidebarPermission($permission) {
             </li>
             <?php endif; ?>
             
+            <?php if (hasSidebarPermission('manage_system') || ($currentUser['role'] ?? '') === 'admin'): ?>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/role-permission-management/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/role-permission-management/">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Role & Permissions</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            
             <!-- Product Management -->
             <?php if (hasSidebarPermission('manage_products') || ($currentUser['role'] ?? '') === 'admin' || ($currentUser['role'] ?? '') === 'vendor'): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/product-management/') !== false ? 'active' : ''; ?>">
@@ -105,19 +128,19 @@ function hasSidebarPermission($permission) {
             </li>
             <?php endif; ?>
             
-            <!-- Order Management -->
-            <?php if (hasSidebarPermission('manage_orders') || hasSidebarPermission('view_orders')): ?>
+            <!-- Order Management / My Orders -->
+            <?php if (hasSidebarPermission('manage_orders') || hasSidebarPermission('view_orders') || ($currentUser['role'] ?? '') === 'customer'): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/order-management/') !== false ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/order-management/">
                     <i class="fas fa-clipboard-list"></i>
-                    <span><?php echo hasSidebarPermission('manage_orders') ? 'Order Management' : 'My Orders'; ?></span>
+                    <span><?php echo (($currentUser['role'] ?? '') === 'customer') ? 'My Orders' : 'Order Management'; ?></span>
                 </a>
             </li>
             <?php endif; ?>
             
             <!-- Shopping (Customers) -->
-            <?php if (hasSidebarPermission('place_orders')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/products/') !== false || strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
+            <?php if (hasSidebarPermission('place_orders') || ($currentUser['role'] ?? '') === 'customer'): ?>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/products/') !== false ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/products/">
                     <i class="fas fa-shopping-bag"></i>
                     <span>Shop Products</span>
@@ -153,6 +176,16 @@ function hasSidebarPermission($permission) {
                 <a href="/agrimarket-erd/v1/support/">
                     <i class="fas fa-headset"></i>
                     <span>Customer Support</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            
+            <!-- Review Management -->
+            <?php if (hasSidebarPermission('manage_reviews') || ($currentUser['role'] ?? '') === 'admin' || ($currentUser['role'] ?? '') === 'staff'): ?>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/review-management/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/review-management/">
+                    <i class="fas fa-star"></i>
+                    <span>Review Management</span>
                 </a>
             </li>
             <?php endif; ?>

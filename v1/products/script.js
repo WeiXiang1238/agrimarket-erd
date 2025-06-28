@@ -2,6 +2,7 @@
 
 let currentPage = 1;
 let isLoading = false;
+let currentSearchLogId = null; // Track current search for click logging
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function () {
@@ -33,7 +34,7 @@ function initializeEventListeners() {
         const modals = document.querySelectorAll('.modal');
         modals.forEach(modal => {
             if (event.target === modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('show');
             }
         });
     });
@@ -74,7 +75,10 @@ function searchProducts(page = 1) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displayProducts(data.products);
+                // Store search log ID for click tracking
+                currentSearchLogId = data.search_log_id || null;
+
+                displayProducts(data.products, searchTerm);
                 updatePagination(data.page, data.totalPages);
                 updateURL(searchTerm, categoryId, page);
             } else {
@@ -93,7 +97,7 @@ function searchProducts(page = 1) {
 }
 
 // Display products in grid
-function displayProducts(products) {
+function displayProducts(products, searchTerm = '') {
     const productsGrid = document.getElementById('productsGrid');
 
     if (!products || products.length === 0) {
@@ -109,12 +113,12 @@ function displayProducts(products) {
         return;
     }
 
-    const productsHTML = products.map(product => `
+    const productsHTML = products.map((product, index) => `
         <div class="product-card" data-product-id="${product.product_id}">
             <div class="product-image">
-                <img src="${product.image_path || '/agrimarket-erd/uploads/products/default-product.jpg'}" 
+                <img src="../..${product.image_path || '/uploads/products/default-product.jpg'}" 
                      alt="${escapeHtml(product.name)}"
-                     onerror="this.src='/agrimarket-erd/uploads/products/default-product.jpg'">
+                     onerror="this.src='../../uploads/products/default-product.jpg'">
                 
                 ${product.is_discounted ? `
                     <div class="discount-badge">
@@ -124,12 +128,12 @@ function displayProducts(products) {
                 
                 <div class="product-actions">
                     <button class="btn-icon btn-primary" 
-                            onclick="viewProductDetails(${product.product_id})"
+                            onclick="trackAndViewProduct(${product.product_id}, ${index + 1})"
                             title="View Details">
                         <i class="fas fa-eye"></i>
                     </button>
                     <button class="btn-icon btn-success" 
-                            onclick="quickAddToCart(${product.product_id})"
+                            onclick="trackAndAddToCart(${product.product_id}, ${index + 1})"
                             title="Quick Add to Cart"
                             ${product.stock_quantity <= 0 ? 'disabled' : ''}>
                         <i class="fas fa-cart-plus"></i>
@@ -165,7 +169,7 @@ function displayProducts(products) {
                 
                 <div class="product-actions-bottom">
                     <button class="btn btn-primary btn-add-cart" 
-                            onclick="showAddToCartModal(${product.product_id})"
+                            onclick="trackAndShowAddToCart(${product.product_id}, ${index + 1})"
                             ${product.stock_quantity <= 0 ? 'disabled' : ''}>
                         <i class="fas fa-cart-plus"></i> Add to Cart
                     </button>
@@ -215,9 +219,40 @@ function clearFilters() {
     searchProducts(1);
 }
 
-// Quick add to cart (quantity = 1)
+// Quick add to cart (quantity = 1) - now with stock validation
 function quickAddToCart(productId) {
-    addToCart(productId, 1);
+    // First check stock availability
+    const formData = new FormData();
+    formData.append('action', 'get_product_details');
+    formData.append('product_id', productId);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const product = data.product;
+                if (product.stock_quantity <= 0) {
+                    showNotification('This product is currently out of stock.', 'error');
+                    return;
+                }
+
+                // Check if there's space for at least 1 more item
+                if (product.stock_quantity >= 1) {
+                    addToCart(productId, 1);
+                } else {
+                    showNotification('Unable to add item - insufficient stock.', 'error');
+                }
+            } else {
+                showNotification('Failed to check stock availability: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Failed to add to cart. Please try again.', 'error');
+        });
 }
 
 // Show add to cart modal
@@ -249,10 +284,22 @@ function showAddToCartModal(productId) {
 function displayAddToCartModal(product) {
     const modalContent = `
         <div class="add-to-cart-form">
+            <div class="product-image-section">
+                <img src="../..${product.image_path || '/uploads/products/default-product.jpg'}" 
+                     alt="${escapeHtml(product.name)}"
+                     onerror="this.src='../../uploads/products/default-product.jpg'"
+                     class="add-to-cart-image">
+            </div>
+            
             <div class="product-summary">
                 <h3>${escapeHtml(product.name)}</h3>
                 <p class="price">RM ${parseFloat(product.selling_price).toFixed(2)}</p>
+                ${product.is_discounted ? `
+                    <p class="original-price">RM ${parseFloat(product.base_price).toFixed(2)}</p>
+                    <span class="discount-badge">${product.discount_percent}% OFF</span>
+                ` : ''}
                 <p class="stock">Stock available: ${product.stock_quantity}</p>
+                ${product.vendor_name ? `<p class="vendor">by ${escapeHtml(product.vendor_name)}</p>` : ''}
             </div>
             
             <div class="quantity-selector">
@@ -260,8 +307,11 @@ function displayAddToCartModal(product) {
                 <div class="quantity-controls">
                     <button type="button" onclick="updateModalQuantity(-1)" id="decreaseBtn">-</button>
                     <input type="number" id="modalQuantity" value="1" min="1" max="${product.stock_quantity}" 
-                           onchange="validateModalQuantity()">
+                           onchange="validateModalQuantity()" oninput="validateModalQuantity()">
                     <button type="button" onclick="updateModalQuantity(1)" id="increaseBtn">+</button>
+                </div>
+                <div class="stock-info" style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                    Available stock: ${product.stock_quantity} items
                 </div>
             </div>
             
@@ -279,7 +329,7 @@ function displayAddToCartModal(product) {
     `;
 
     document.getElementById('addToCartContent').innerHTML = modalContent;
-    document.getElementById('addToCartModal').style.display = 'block';
+    document.getElementById('addToCartModal').classList.add('show');
 }
 
 // Update quantity in modal
@@ -298,12 +348,46 @@ function updateModalQuantity(change) {
 // Validate quantity in modal
 function validateModalQuantity() {
     const quantityInput = document.getElementById('modalQuantity');
-    const quantity = parseInt(quantityInput.value);
+    let quantity = parseInt(quantityInput.value);
     const maxQuantity = parseInt(quantityInput.max);
+
+    // Validate and clamp the quantity value
+    if (isNaN(quantity) || quantity < 1) {
+        quantity = 1;
+        quantityInput.value = 1;
+        showNotification('Quantity must be at least 1.', 'warning');
+    } else if (quantity > maxQuantity) {
+        quantity = maxQuantity;
+        quantityInput.value = maxQuantity;
+        showNotification(`Maximum quantity available is ${maxQuantity} items.`, 'warning');
+    }
 
     // Update button states
     document.getElementById('decreaseBtn').disabled = quantity <= 1;
     document.getElementById('increaseBtn').disabled = quantity >= maxQuantity;
+
+    // Show warning when at maximum stock
+    if (quantity === maxQuantity && maxQuantity > 0) {
+        // Remove any existing warning spans
+        const existingWarning = document.querySelector('.stock-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+
+        // Add warning message near quantity controls
+        const quantitySelector = document.querySelector('.quantity-selector');
+        const warningSpan = document.createElement('div');
+        warningSpan.className = 'stock-warning';
+        warningSpan.style.cssText = 'color: #ff6b6b; font-size: 0.8em; margin-top: 5px;';
+        warningSpan.textContent = `Maximum stock limit reached (${maxQuantity} items)`;
+        quantitySelector.appendChild(warningSpan);
+    } else {
+        // Remove warning if quantity is below maximum
+        const existingWarning = document.querySelector('.stock-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+    }
 
     // Update total price
     const pricePerUnit = parseFloat(document.querySelector('.price').textContent.replace('RM ', ''));
@@ -313,7 +397,26 @@ function validateModalQuantity() {
 
 // Confirm add to cart from modal
 function confirmAddToCart(productId, price) {
-    const quantity = parseInt(document.getElementById('modalQuantity').value);
+    const quantityInput = document.getElementById('modalQuantity');
+    const quantity = parseInt(quantityInput.value);
+    const maxQuantity = parseInt(quantityInput.max);
+
+    // Final validation before adding to cart
+    if (isNaN(quantity) || quantity < 1) {
+        showNotification('Please enter a valid quantity.', 'error');
+        return;
+    }
+
+    if (quantity > maxQuantity) {
+        showNotification(`Cannot add ${quantity} items. Only ${maxQuantity} available in stock.`, 'error');
+        return;
+    }
+
+    if (maxQuantity <= 0) {
+        showNotification('This product is currently out of stock.', 'error');
+        return;
+    }
+
     addToCart(productId, quantity);
     closeAddToCart();
 }
@@ -373,9 +476,9 @@ function displayProductDetailsModal(product) {
     const modalContent = `
         <div class="product-details">
             <div class="product-details-image">
-                <img src="../../${product.image_path || '../../agrimarket-erd/uploads/products/default-product.jpg'}" 
+                <img src="../..${product.image_path || '/uploads/products/default-product.jpg'}" 
                      alt="${escapeHtml(product.name)}"
-                     onerror="this.src='../../agrimarket-erd/uploads/products/default-product.jpg'">
+                     onerror="this.src='../../uploads/products/default-product.jpg'">
             </div>
             
             <div class="product-details-info">
@@ -427,7 +530,7 @@ function displayProductDetailsModal(product) {
     `;
 
     document.getElementById('productDetailsContent').innerHTML = modalContent;
-    document.getElementById('productDetailsModal').style.display = 'block';
+    document.getElementById('productDetailsModal').classList.add('show');
 }
 
 // Update cart count in header
@@ -454,17 +557,17 @@ function updateCartCount() {
 
 // Modal management functions
 function closeProductDetails() {
-    document.getElementById('productDetailsModal').style.display = 'none';
+    document.getElementById('productDetailsModal').classList.remove('show');
 }
 
 function closeAddToCart() {
-    document.getElementById('addToCartModal').style.display = 'none';
+    document.getElementById('addToCartModal').classList.remove('show');
 }
 
 function closeAllModals() {
     const modals = document.querySelectorAll('.modal');
     modals.forEach(modal => {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
     });
 }
 
@@ -506,4 +609,39 @@ function showNotification(message, type = 'info') {
             notification.remove();
         }, 300);
     }, 5000);
+}
+
+// Click tracking functions
+function trackProductClick(productId, clickPosition) {
+    if (!currentSearchLogId) return; // No search to track
+
+    const formData = new FormData();
+    formData.append('action', 'track_product_click');
+    formData.append('search_log_id', currentSearchLogId);
+    formData.append('product_id', productId);
+    formData.append('click_position', clickPosition);
+
+    // Send tracking data asynchronously
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    }).catch(error => {
+        console.log('Click tracking failed:', error);
+    });
+}
+
+// Wrapper functions for tracking + original actions
+function trackAndViewProduct(productId, position) {
+    trackProductClick(productId, position);
+    viewProductDetails(productId);
+}
+
+function trackAndAddToCart(productId, position) {
+    trackProductClick(productId, position);
+    quickAddToCart(productId);
+}
+
+function trackAndShowAddToCart(productId, position) {
+    trackProductClick(productId, position);
+    showAddToCartModal(productId);
 } 

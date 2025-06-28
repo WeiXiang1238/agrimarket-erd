@@ -53,8 +53,9 @@ $checkoutValidation = $cartMgmtService->isCartValidForCheckout($cartItems, $cart
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopping Cart - AgriMarket</title>
+    <title>Shopping Cart - AgriMarket Solutions</title>
     <link rel="stylesheet" href="../components/main.css">
+    <link rel="stylesheet" href="../dashboard/style.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -70,28 +71,36 @@ $checkoutValidation = $cartMgmtService->isCartValidForCheckout($cartItems, $cart
             
             <!-- Dashboard Content -->
             <div class="dashboard-content">
-                <div class="page-header">
-                    <h1><i class="fas fa-shopping-cart"></i> Shopping Cart</h1>
-                    <div class="cart-actions">
-                        <button class="btn btn-secondary" onclick="clearCart()">
-                            <i class="fas fa-trash"></i> Clear Cart
-                        </button>
-                        <button class="btn btn-primary" onclick="showComparison()">
-                            <i class="fas fa-balance-scale"></i> Compare Products (<?php echo count($comparisonProducts); ?>)
-                        </button>
+                <!-- Page Header with Gradient -->
+                <div class="page-header-gradient">
+                    <div class="page-header">
+                        <div>
+                            <h2><i class="fas fa-shopping-cart"></i> Shopping Cart</h2>
+                            <p>Review and manage your selected items</p>
+                        </div>
+                        <div class="cart-actions">
+                            <button class="btn btn-secondary" onclick="clearCart()">
+                                <i class="fas fa-trash"></i> Clear Cart
+                            </button>
+                            <button class="btn btn-primary" onclick="showComparison()">
+                                <i class="fas fa-balance-scale"></i> Compare (<?php echo count($comparisonProducts); ?>)
+                            </button>
+                        </div>
                     </div>
                 </div>
 
             <?php if ($isEmpty): ?>
-                <div class="empty-cart">
-                    <div class="empty-cart-icon">
-                        <i class="fas fa-shopping-cart"></i>
+                <div class="content-card">
+                    <div class="card-body text-center p-5">
+                        <div class="mb-4">
+                            <i class="fas fa-shopping-cart text-muted" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="text-muted mb-3">Your cart is empty</h3>
+                        <p class="text-muted mb-4">Add some products to get started with your shopping experience.</p>
+                        <a href="/agrimarket-erd/v1/products/" class="btn btn-primary">
+                            <i class="fas fa-shopping-bag"></i> Browse Products
+                        </a>
                     </div>
-                    <h3>Your cart is empty</h3>
-                    <p>Add some products to get started with your shopping experience.</p>
-                    <a href="/agrimarket-erd/v1/products/" class="btn btn-primary">
-                        <i class="fas fa-shopping-bag"></i> Browse Products
-                    </a>
                 </div>
             <?php else: ?>
                 <!-- Cart Validation Warnings -->
@@ -222,82 +231,85 @@ $checkoutValidation = $cartMgmtService->isCartValidForCheckout($cartItems, $cart
 
             <!-- Product Comparison Modal -->
             <div id="comparisonModal" class="modal">
-                <div class="modal-content modal-large">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-balance-scale"></i> Product Comparison</h2>
-                        <button class="close-modal" onclick="closeComparison()">&times;</button>
-                    </div>
-                    <div class="modal-body" id="comparisonContent">
-                        <!-- Comparison content will be loaded here -->
+                <div class="modal-dialog large-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-balance-scale"></i> Product Comparison</h3>
+                            <button class="modal-close" onclick="closeComparison()">&times;</button>
+                        </div>
+                        <div class="modal-body" id="comparisonContent">
+                            <!-- Comparison content will be loaded here -->
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Checkout Modal -->
             <div id="checkoutModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-credit-card"></i> Checkout</h2>
-                        <button class="close-modal" onclick="closeCheckout()">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="checkoutForm">
-                            <div class="checkout-step">
-                                <h3>Shipping Address</h3>
-                                <div class="form-group">
-                                    <label>Full Name</label>
-                                    <input type="text" name="shipping_name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Address</label>
-                                    <textarea name="shipping_address" required></textarea>
-                                </div>
-                                <div class="form-row">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-credit-card"></i> Checkout</h3>
+                            <button class="modal-close" onclick="closeCheckout()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="checkoutForm">
+                                <div class="checkout-step">
+                                    <h3>Shipping Address</h3>
                                     <div class="form-group">
-                                        <label>City</label>
-                                        <input type="text" name="shipping_city" required>
+                                        <label class="form-label">Full Name</label>
+                                        <input type="text" name="shipping_name" class="form-control" required>
                                     </div>
                                     <div class="form-group">
-                                        <label>Postal Code</label>
-                                        <input type="text" name="shipping_postal" required>
+                                        <label class="form-label">Address</label>
+                                        <textarea name="shipping_address" class="form-control" required></textarea>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">City</label>
+                                            <input type="text" name="shipping_city" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Postal Code</label>
+                                            <input type="text" name="shipping_postal" class="form-control" required>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="checkout-step">
-                                <h3>Payment Method</h3>
-                                <div class="payment-methods">
-                                    <?php if (!empty($paymentMethods)): ?>
-                                        <?php foreach ($paymentMethods as $method): ?>
-                                            <label class="payment-method">
-                                                <input type="radio" name="payment_method" value="<?php echo $method['payment_method_id']; ?>" required>
-                                                <div class="method-info">
-                                                    <strong><?php echo htmlspecialchars($method['name']); ?></strong>
-                                                    <p><?php echo htmlspecialchars($method['description']); ?></p>
-                                                    <?php if ($method['processing_fee_percent'] > 0): ?>
-                                                        <small>Processing fee: <?php echo $method['processing_fee_percent']; ?>%</small>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </label>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                <div class="checkout-step">
+                                    <h3>Payment Method</h3>
+                                    <div class="payment-methods">
+                                        <?php if (!empty($paymentMethods)): ?>
+                                            <?php foreach ($paymentMethods as $method): ?>
+                                                <label class="payment-method">
+                                                    <input type="radio" name="payment_method" value="<?php echo $method['payment_method_id']; ?>" required>
+                                                    <div class="method-info">
+                                                        <strong><?php echo htmlspecialchars($method['name']); ?></strong>
+                                                        <p><?php echo htmlspecialchars($method['description']); ?></p>
+                                                        <?php if ($method['processing_fee_percent'] > 0): ?>
+                                                            <small>Processing fee: <?php echo $method['processing_fee_percent']; ?>%</small>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="checkout-total">
-                                <h4>Total: RM <?php echo $formattedSummary['total']; ?></h4>
-                            </div>
+                                <div class="checkout-total">
+                                    <h4>Total: RM <?php echo $formattedSummary['total']; ?></h4>
+                                </div>
 
-                            <div class="checkout-actions">
-                                <button type="submit" class="btn btn-primary btn-large">
-                                    <i class="fas fa-credit-card"></i> Place Order
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="closeCheckout()">Cancel</button>
-                            </div>
-                        </form>
+                                <div class="checkout-actions">
+                                    <button type="submit" class="btn btn-primary btn-large">
+                                        <i class="fas fa-credit-card"></i> Place Order
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="closeCheckout()">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-            </div>
             </div>
         </main>
     </div>

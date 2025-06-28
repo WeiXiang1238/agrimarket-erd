@@ -193,8 +193,7 @@ try {
             'success' => true,
             'message' => 'Order placed successfully!',
             'orders' => $orders,
-            'payments' => $processedPayments,
-            'redirect' => '/agrimarket-erd/v1/order-management/'
+            'payments' => $processedPayments
         ]);
     } elseif (count($processedPayments) > 0 && count($failedPayments) > 0) {
         // Partial success
@@ -203,8 +202,7 @@ try {
             'message' => 'Some orders processed successfully, but some payments failed.',
             'orders' => $orders,
             'successful_payments' => $processedPayments,
-            'failed_payments' => $failedPayments,
-            'redirect' => '/agrimarket-erd/v1/order-management/'
+            'failed_payments' => $failedPayments
         ]);
     } else {
         // All payments failed

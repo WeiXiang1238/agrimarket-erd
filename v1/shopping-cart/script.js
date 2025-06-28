@@ -1,5 +1,32 @@
 // Shopping Cart Functionality
 
+// Initialize event listeners
+document.addEventListener('DOMContentLoaded', function () {
+    // Close modals when clicking outside
+    window.addEventListener('click', function (event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.classList.remove('show');
+            }
+        });
+    });
+
+    // Escape key to close modals
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeAllModals();
+        }
+    });
+});
+
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.classList.remove('show');
+    });
+}
+
 function updateQuantity(cartId, quantity) {
     if (quantity < 1) return;
 
@@ -185,13 +212,13 @@ function updateComparisonCount(count) {
 
 function showComparison() {
     const modal = document.getElementById('comparisonModal');
-    modal.style.display = 'block';
+    modal.classList.add('show');
     loadComparison();
 }
 
 function closeComparison() {
     const modal = document.getElementById('comparisonModal');
-    modal.style.display = 'none';
+    modal.classList.remove('show');
 }
 
 function loadComparison() {
@@ -243,7 +270,7 @@ function displayComparison(comparison) {
     comparison.products.forEach(product => {
         html += `<th class="product-column">
             <div class="product-header">
-                <img src="${product.image_path || '/agrimarket-erd/uploads/products/default.png'}" alt="${product.name}">
+                <img src="../../${product.image_path || 'uploads/products/default-product.png'}" alt="${product.name}">
                 <h4>${product.name}</h4>
                 <button class="btn-remove" onclick="removeFromComparison(${product.product_id})" title="Remove">
                     <i class="fas fa-times"></i>
@@ -383,12 +410,12 @@ function addToCartFromComparison(productId) {
 
 function proceedToCheckout() {
     const modal = document.getElementById('checkoutModal');
-    modal.style.display = 'block';
+    modal.classList.add('show');
 }
 
 function closeCheckout() {
     const modal = document.getElementById('checkoutModal');
-    modal.style.display = 'none';
+    modal.classList.remove('show');
 }
 
 // Checkout form handling

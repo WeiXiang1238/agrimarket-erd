@@ -152,30 +152,35 @@ class OrderService
             $countStmt->execute($params);
             $total = $countStmt->fetch()['total'];
             
-            // Get orders with items
-            $stmt = $this->db->prepare("
+            $sql = "
                 SELECT 
                     o.*,
-                    v.business_name as vendor_name,
-                    COUNT(oi.order_item_id) as item_count,
-                    GROUP_CONCAT(
-                        CONCAT(p.name, ' (x', oi.quantity, ')') 
-                        SEPARATOR ', '
-                    ) as items_summary
+                    v.business_name AS vendor_name,
+                    COUNT(oi.order_item_id) AS item_count,
+                    GROUP_CONCAT(CONCAT(p.name,' (x',oi.quantity,')') SEPARATOR ', ') AS items_summary
                 FROM orders o
-                LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+                LEFT JOIN vendors  v  ON o.vendor_id = v.vendor_id
                 LEFT JOIN order_items oi ON o.order_id = oi.order_id
-                LEFT JOIN products p ON oi.product_id = p.product_id
+                LEFT JOIN products p     ON oi.product_id = p.product_id
                 WHERE $whereClause
                 GROUP BY o.order_id
                 ORDER BY o.order_date DESC
-                LIMIT ? OFFSET ?
-            ");
-            
-            $params[] = $limit;
-            $params[] = $offset;
-            $stmt->execute($params);
-            $orders = $stmt->fetchAll();
+                LIMIT ? OFFSET ?";
+
+            $stmt = $this->db->prepare($sql);
+
+            /* bind WHERE-clause params first */
+            $index = 1;
+            foreach ($params as $val) {
+                $stmt->bindValue($index++, $val);        // default string binding is fine
+            }
+
+            /* bind LIMIT / OFFSET with correct type */
+            $stmt->bindValue($index++, (int)$limit,  PDO::PARAM_INT);
+            $stmt->bindValue($index++, (int)$offset, PDO::PARAM_INT);
+
+            $stmt->execute();
+$orders = $stmt->fetchAll();
             
             return [
                 'success' => true,
@@ -210,13 +215,14 @@ class OrderService
                 SELECT 
                     o.*,
                     v.business_name as vendor_name,
-                    v.contact_email as vendor_email,
-                    v.contact_phone as vendor_phone,
+                    v.contact_number as vendor_phone,
+                    vu.email as vendor_email,
                     c.customer_id,
                     u.name as customer_name,
                     u.email as customer_email
                 FROM orders o
                 LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
+                LEFT JOIN users vu ON v.user_id = vu.user_id
                 LEFT JOIN customers c ON o.customer_id = c.customer_id
                 LEFT JOIN users u ON c.user_id = u.user_id
                 WHERE $whereClause
@@ -524,7 +530,7 @@ class OrderService
     /**
      * Update order status (for vendors/admins)
      */
-    public function updateOrderStatus($orderId, $status, $trackingNumber = null, $deliveryDate = null, $notes = null)
+    public function updateOrderStatus($orderId, $status, $trackingNumber = null, $deliveryDate = null)
     {
         try {
             $updateFields = ['status = ?'];
@@ -535,21 +541,17 @@ class OrderService
                 $params[] = $trackingNumber;
             }
             
+            // Use delivered_at instead of delivery_date, and set it when status is Delivered or when deliveryDate is provided
             if ($deliveryDate) {
-                $updateFields[] = 'delivery_date = ?';
+                $updateFields[] = 'delivered_at = ?';
                 $params[] = $deliveryDate;
+            } elseif ($status === 'Delivered') {
+                $updateFields[] = 'delivered_at = CURDATE()';
             }
             
-            if ($notes) {
-                $updateFields[] = 'notes = ?';
-                $params[] = $notes;
-            }
+            // Skip notes since the column doesn't exist in the database
+            // If you need notes functionality, you'll need to add the column first
             
-            if ($status === 'Delivered') {
-                $updateFields[] = 'delivered_at = NOW()';
-            }
-            
-            $updateFields[] = 'updated_at = NOW()';
             $params[] = $orderId;
             
             $updateClause = implode(', ', $updateFields);
@@ -601,7 +603,7 @@ class OrderService
             // Update order status to cancelled
             $stmt = $this->db->prepare("
                 UPDATE orders 
-                SET status = 'Cancelled', cancelled_reason = ?, updated_at = NOW()
+                SET status = 'Cancelled', cancel_reason = ?
                 WHERE order_id = ?
             ");
             $stmt->execute([$reason, $orderId]);
@@ -660,7 +662,11 @@ class OrderService
             $countStmt->execute($params);
             $total = $countStmt->fetch()['total'];
             
-            // Get orders
+            // Get orders - create separate params array for main query
+            $mainQueryParams = $params; // Copy original params
+            $mainQueryParams[] = (int)$limit;
+            $mainQueryParams[] = (int)$offset;
+            
             $stmt = $this->db->prepare("
                 SELECT 
                     o.*,
@@ -683,9 +689,17 @@ class OrderService
                 LIMIT ? OFFSET ?
             ");
             
-            $params[] = $limit;
-            $params[] = $offset;
-            $stmt->execute($params);
+            // Bind WHERE clause parameters first
+            $index = 1;
+            foreach ($params as $val) {
+                $stmt->bindValue($index++, $val);
+            }
+            
+            // Bind LIMIT and OFFSET with correct type
+            $stmt->bindValue($index++, (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue($index++, (int)$offset, PDO::PARAM_INT);
+            
+            $stmt->execute();
             $orders = $stmt->fetchAll();
             
             return [
@@ -727,7 +741,11 @@ class OrderService
             $countStmt->execute($params);
             $total = $countStmt->fetch()['total'];
             
-            // Get orders
+            // Get orders - create separate params array for main query
+            $mainQueryParams = $params; // Copy original params
+            $mainQueryParams[] = (int)$limit;
+            $mainQueryParams[] = (int)$offset;
+            
             $stmt = $this->db->prepare("
                 SELECT 
                     o.*,
@@ -752,9 +770,17 @@ class OrderService
                 LIMIT ? OFFSET ?
             ");
             
-            $params[] = $limit;
-            $params[] = $offset;
-            $stmt->execute($params);
+            // Bind WHERE clause parameters first
+            $index = 1;
+            foreach ($params as $val) {
+                $stmt->bindValue($index++, $val);
+            }
+            
+            // Bind LIMIT and OFFSET with correct type
+            $stmt->bindValue($index++, (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue($index++, (int)$offset, PDO::PARAM_INT);
+            
+            $stmt->execute();
             $orders = $stmt->fetchAll();
             
             return [

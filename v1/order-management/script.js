@@ -15,13 +15,232 @@ function filterOrders() {
     window.location.href = currentUrl.toString();
 }
 
+// Admin-specific functions
+function toggleBulkActions() {
+    const panel = document.getElementById('bulkActionsPanel');
+    if (panel) {
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.order-select:checked');
+    const countElement = document.getElementById('selectedCount');
+    if (countElement) {
+        countElement.textContent = `${checkboxes.length} orders selected`;
+    }
+}
+
+function bulkUpdateStatus() {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) {
+        showNotification('Please select at least one order', 'warning');
+        return;
+    }
+
+    // Populate selected orders list
+    const ordersList = document.getElementById('selectedOrdersList');
+    if (ordersList) {
+        ordersList.innerHTML = `
+            <h4>Selected Orders (${selected.length}):</h4>
+            <div class="selected-orders">
+                ${selected.map(id => `<span class="order-tag">#${id}</span>`).join('')}
+            </div>
+        `;
+    }
+
+    document.getElementById('bulkStatusModal').classList.add('show');
+}
+
+function closeBulkStatusModal() {
+    document.getElementById('bulkStatusModal').classList.remove('show');
+}
+
+function bulkExport() {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) {
+        showNotification('Please select at least one order', 'warning');
+        return;
+    }
+    exportOrders(selected);
+}
+
+function bulkGenerateReport() {
+    const selected = getSelectedOrders();
+    if (selected.length === 0) {
+        showNotification('Please select at least one order', 'warning');
+        return;
+    }
+    generateOrderReport(selected);
+}
+
+function exportOrders(orderIds = null) {
+    showLoader();
+
+    const params = new URLSearchParams();
+    params.append('action', 'export_orders');
+    if (orderIds && orderIds.length > 0) {
+        params.append('order_ids', orderIds.join(','));
+    }
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+    })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `orders_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showNotification('Orders exported successfully!', 'success');
+        })
+        .catch(error => {
+            showNotification('Export failed', 'error');
+            console.error('Export error:', error);
+        })
+        .finally(() => hideLoader());
+}
+
+function viewCustomerProfile(customerId) {
+    if (!customerId || customerId === 0) {
+        showNotification('Customer information not available', 'warning');
+        return;
+    }
+    window.open(`/agrimarket-erd/v1/customer-management/?customer_id=${customerId}`, '_blank');
+}
+
+function viewVendorProfile(vendorId) {
+    if (!vendorId || vendorId === 0) {
+        showNotification('Vendor information not available', 'warning');
+        return;
+    }
+    window.open(`/agrimarket-erd/v1/vendor-management/?vendor_id=${vendorId}`, '_blank');
+}
+
+function viewOrderAnalytics(orderId) {
+    const modal = document.getElementById('orderAnalyticsModal');
+    const content = document.getElementById('orderAnalyticsContent');
+
+    modal.classList.add('show');
+    content.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading analytics...</div>';
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=get_order_analytics&order_id=${orderId}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayOrderAnalytics(data.analytics);
+            } else {
+                content.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            content.innerHTML = '<div class="error">Failed to load analytics</div>';
+            console.error('Analytics error:', error);
+        });
+}
+
+function displayOrderAnalytics(analytics) {
+    const content = document.getElementById('orderAnalyticsContent');
+    content.innerHTML = `
+        <div class="analytics-dashboard">
+            <div class="analytics-section">
+                <h3>Order Performance</h3>
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h4>Processing Time</h4>
+                        <p>${analytics.processing_time || 'N/A'}</p>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Customer Satisfaction</h4>
+                        <p>${analytics.customer_rating || 'N/A'}</p>
+                    </div>
+                    <div class="analytics-card">
+                        <h4>Vendor Response</h4>
+                        <p>${analytics.vendor_response_time || 'N/A'}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="analytics-section">
+                <h3>Order Timeline</h3>
+                <div class="timeline">
+                    ${analytics.timeline ? analytics.timeline.map(event => `
+                        <div class="timeline-event">
+                            <div class="timeline-date">${event.date}</div>
+                            <div class="timeline-content">${event.event}</div>
+                        </div>
+                    `).join('') : '<p>No timeline data available</p>'}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function closeOrderAnalyticsModal() {
+    document.getElementById('orderAnalyticsModal').classList.remove('show');
+}
+
+function adminCancelOrder(orderId) {
+    document.getElementById('adminCancelOrderId').value = orderId;
+    document.getElementById('adminCancelModal').classList.add('show');
+}
+
+function closeAdminCancelModal() {
+    document.getElementById('adminCancelModal').classList.remove('show');
+}
+
+function generateOrderReport(orderIds) {
+    showLoader();
+
+    const params = new URLSearchParams();
+    params.append('action', 'generate_report');
+    params.append('order_ids', orderIds.join(','));
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Report generated successfully!', 'success');
+                if (data.report_url) {
+                    window.open(data.report_url, '_blank');
+                }
+            } else {
+                showNotification('Report generation failed', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Report generation failed', 'error');
+            console.error('Report error:', error);
+        })
+        .finally(() => hideLoader());
+}
+
+function getSelectedOrders() {
+    const checkboxes = document.querySelectorAll('.order-select:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
 function viewOrderDetails(orderId) {
     const modal = document.getElementById('orderDetailsModal');
     const content = document.getElementById('orderDetailsContent');
 
     // Show modal and loading state
-    modal.style.display = 'block';
-    content.innerHTML = '<div class="loading">Loading order details...</div>';
+    modal.classList.add('show');
+    content.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading order details...</div>';
 
     // Fetch order details
     fetch(window.location.href, {
@@ -129,10 +348,10 @@ function displayOrderDetails(order) {
                 <span class="detail-label">Subtotal:</span>
                 <span class="detail-value">RM ${parseFloat(order.total_amount).toFixed(2)}</span>
             </div>
-            ${order.shipping_cost > 0 ? `
+            ${(order.shipping_fee || 0) > 0 ? `
                 <div class="detail-row">
                     <span class="detail-label">Shipping:</span>
-                    <span class="detail-value">RM ${parseFloat(order.shipping_cost).toFixed(2)}</span>
+                    <span class="detail-value">RM ${parseFloat(order.shipping_fee || 0).toFixed(2)}</span>
                 </div>
             ` : ''}
             ${order.tax_amount > 0 ? `
@@ -151,7 +370,7 @@ function displayOrderDetails(order) {
 
 function closeOrderDetails() {
     const modal = document.getElementById('orderDetailsModal');
-    modal.style.display = 'none';
+    modal.classList.remove('show');
 }
 
 function trackOrder(orderId) {
@@ -159,8 +378,8 @@ function trackOrder(orderId) {
     const content = document.getElementById('trackingContent');
 
     // Show modal and loading state
-    modal.style.display = 'block';
-    content.innerHTML = '<div class="loading">Loading tracking information...</div>';
+    modal.classList.add('show');
+    content.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading tracking information...</div>';
 
     // Fetch tracking data
     fetch(window.location.href, {
@@ -235,7 +454,7 @@ function displayTracking(tracking) {
 
 function closeTracking() {
     const modal = document.getElementById('trackingModal');
-    modal.style.display = 'none';
+    modal.classList.remove('show');
 }
 
 function cancelOrder(orderId) {
@@ -312,12 +531,12 @@ function updateOrderStatus(orderId) {
     const orderIdField = document.getElementById('updateOrderId');
 
     orderIdField.value = orderId;
-    modal.style.display = 'block';
+    modal.classList.add('show');
 }
 
 function closeUpdateStatus() {
     const modal = document.getElementById('updateStatusModal');
-    modal.style.display = 'none';
+    modal.classList.remove('show');
 }
 
 // Form submission for status update
@@ -355,6 +574,96 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         });
     }
+
+    // Admin bulk status form
+    const bulkStatusForm = document.getElementById('bulkStatusForm');
+    if (bulkStatusForm) {
+        bulkStatusForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const selectedOrders = getSelectedOrders();
+
+            if (selectedOrders.length === 0) {
+                showNotification('No orders selected', 'warning');
+                return;
+            }
+
+            formData.append('action', 'bulk_update_status');
+            formData.append('order_ids', selectedOrders.join(','));
+
+            showLoader();
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        closeBulkStatusModal();
+                        location.reload();
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error updating orders', 'error');
+                    console.error('Error:', error);
+                })
+                .finally(() => {
+                    hideLoader();
+                });
+        });
+    }
+
+    // Admin cancel form
+    const adminCancelForm = document.getElementById('adminCancelForm');
+    if (adminCancelForm) {
+        adminCancelForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            formData.append('action', 'admin_cancel_order');
+
+            showLoader();
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        closeAdminCancelModal();
+                        location.reload();
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error cancelling order', 'error');
+                    console.error('Error:', error);
+                })
+                .finally(() => {
+                    hideLoader();
+                });
+        });
+    }
+
+    // Select all orders functionality
+    const selectAllCheckbox = document.getElementById('selectAllOrders');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+            const orderCheckboxes = document.querySelectorAll('.order-select');
+            orderCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectedCount();
+        });
+    }
 });
 
 // Close modals when clicking outside
@@ -364,7 +673,7 @@ window.addEventListener('click', function (event) {
     modals.forEach(modalId => {
         const modal = document.getElementById(modalId);
         if (modal && event.target === modal) {
-            modal.style.display = 'none';
+            modal.classList.remove('show');
         }
     });
 });
