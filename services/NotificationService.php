@@ -41,7 +41,7 @@ class NotificationService {
     }
 
     // Fetch notifications for a user (most recent first)
-    public function getUserNotifications($userId, $limit = 10) {
+    public function getUserNotifications($userId, $limit = 20) {
         $limit = (int)$limit; // Ensure it's an integer
         $stmt = $this->db->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT $limit");
         $stmt->execute([$userId]);

@@ -36,7 +36,7 @@ if ($currentUser) {
 $userNotifications = [];
 $unreadCount = 0;
 if ($currentUser) {
-    $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 10);
+    $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 20);
     $unreadCount = 0;
     foreach ($userNotifications as $notif) {
         if (!$notif['is_read']) $unreadCount++;
