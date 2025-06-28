@@ -63,11 +63,13 @@ class ProductService
     public function getVendorIdByUserId($userId)
     {
         try {
+            error_log('Looking up vendor ID for user ID: ' . $userId);
             $result = $this->executeQuery(
                 "SELECT vendor_id FROM vendors WHERE user_id = ? AND is_archive = 0", 
                 [$userId]
             );
             $vendorData = $result->fetch_assoc();
+            error_log('Vendor lookup result: ' . print_r($vendorData, true));
             return $vendorData ? $vendorData['vendor_id'] : null;
         } catch (Exception $e) {
             error_log('Error fetching vendor data: ' . $e->getMessage());
@@ -237,10 +239,13 @@ class ProductService
     public function createProduct($productData, $userRole = 'admin', $userId = null)
     {
         try {
+            error_log('createProduct called with userRole: ' . $userRole . ', userId: ' . $userId);
+            
             // For vendors, automatically set vendor_id to their own vendor profile
             $vendorId = intval($productData['vendor_id'] ?? 0);
             if ($userRole === 'vendor') {
                 $vendorId = $this->getVendorIdByUserId($userId);
+                error_log('Vendor ID resolved: ' . $vendorId);
                 if (!$vendorId) {
                     return ['success' => false, 'message' => 'Vendor profile not found'];
                 }
@@ -248,6 +253,7 @@ class ProductService
             
             // Validate product data
             $validation = $this->validateProductData($productData);
+            error_log('Validation result: ' . print_r($validation, true));
             if (!$validation['valid']) {
                 return ['success' => false, 'message' => $validation['message']];
             }
@@ -255,7 +261,9 @@ class ProductService
             // Handle image upload if provided
             $imagePath = null;
             if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+                error_log('Processing image upload');
                 $uploadResult = $this->handleImageUpload($_FILES['product_image']);
+                error_log('Image upload result: ' . print_r($uploadResult, true));
                 if (!$uploadResult['success']) {
                     return ['success' => false, 'message' => $uploadResult['message']];
                 }
@@ -290,6 +298,8 @@ class ProductService
                 $imagePath
             ];
             
+            error_log('Insert parameters: ' . print_r($insertParams, true));
+            
             // Insert product (using actual database columns)
             $stmt = $this->db->prepare("
                 INSERT INTO products (
@@ -305,19 +315,23 @@ class ProductService
                 $result = $stmt->execute();
                 
                 if ($result) {
+                    error_log('Product created successfully with ID: ' . $this->db->insert_id);
                     return [
                         'success' => true, 
                         'message' => 'Product created successfully', 
                         'product_id' => $this->db->insert_id
                     ];
                 } else {
+                    error_log('Failed to execute insert: ' . $stmt->error);
                     return ['success' => false, 'message' => 'Failed to create product: ' . $stmt->error];
                 }
             } else {
+                error_log('Failed to prepare statement: ' . $this->db->error);
                 return ['success' => false, 'message' => 'Failed to prepare statement: ' . $this->db->error];
             }
             
         } catch (Exception $e) {
+            error_log('Exception in createProduct: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to create product: ' . $e->getMessage()];
         }
     }

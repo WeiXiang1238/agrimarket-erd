@@ -66,7 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 exit;
             
             case 'create_product':
+                error_log('Creating product with data: ' . print_r($_POST, true));
                 $result = $productService->createProduct($_POST, $userRole, $currentUser['user_id']);
+                error_log('Product creation result: ' . print_r($result, true));
                 echo json_encode($result);
                 exit;
                 
@@ -499,7 +501,7 @@ try {
             
             // Vendor validation (only for admin)
             const vendorSelect = document.getElementById('productVendor');
-            if (vendorSelect) {
+            if (vendorSelect && vendorSelect.tagName === 'SELECT') {
                 vendorSelect.addEventListener('change', function() {
                     validateVendor();
                 });
@@ -709,18 +711,26 @@ try {
 
         // Save product
         function saveProduct() {
+            console.log('saveProduct function called');
+            
             // Clear previous messages
             document.getElementById('modalMessage').innerHTML = '';
             
             // Validate form
             if (!validateProductForm()) {
+                console.log('Form validation failed');
                 document.getElementById('modalMessage').innerHTML = 
                     '<div class="error">Please fix the errors above</div>';
                 return;
             }
+            
+            console.log('Form validation passed');
 
             const formData = new FormData(document.getElementById('productForm'));
             formData.append('action', isEditing ? 'update_product' : 'create_product');
+            formData.append('csrf_token', '<?php echo $csrfToken; ?>');
+            
+            console.log('FormData created, action:', isEditing ? 'update_product' : 'create_product');
             
             // Check if existing image should be removed
             const preview = document.getElementById('previewImg');
@@ -737,12 +747,18 @@ try {
             saveButton.textContent = isEditing ? 'Updating...' : 'Creating...';
             saveButton.disabled = true;
             
+            console.log('Sending fetch request...');
+            
             fetch('', {
                 method: 'POST',
                 body: formData,
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response received:', response);
+                return response.json();
+            })
             .then(data => {
+                console.log('Data received:', data);
                 if (data.success) {
                     showModalMessage(data.message, 'success');
                     setTimeout(() => {
@@ -1161,7 +1177,7 @@ try {
             
             // Validate Vendor (only for admin users)
             const vendorSelect = document.getElementById('productVendor');
-            if (vendorSelect && !vendorSelect.value) {
+            if (vendorSelect && vendorSelect.tagName === 'SELECT' && !vendorSelect.value) {
                 showProductError('productVendorError', 'Please select a vendor');
                 isValid = false;
             }
@@ -1340,7 +1356,7 @@ try {
 
         function validateVendor() {
             const vendorSelect = document.getElementById('productVendor');
-            if (vendorSelect && !vendorSelect.value) {
+            if (vendorSelect && vendorSelect.tagName === 'SELECT' && !vendorSelect.value) {
                 showProductError('productVendorError', 'Please select a vendor');
                 return false;
             } else {
