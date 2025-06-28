@@ -69,7 +69,7 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
             exit;
             
         case 'moderate_review':
-            if (!$userRoles['isAdmin'] && !$userRoles['isStaff']) {
+            if (!($userRoles['isAdmin'] ?? false) && !($userRoles['isStaff'] ?? false)) {
                 echo json_encode(['success' => false, 'message' => 'Unauthorized']);
                 exit;
             }
@@ -83,7 +83,7 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
             exit;
             
         case 'bulk_moderate':
-            if (!$userRoles['isAdmin'] && !$userRoles['isStaff']) {
+            if (!($userRoles['isAdmin'] ?? false) && !($userRoles['isStaff'] ?? false)) {
                 echo json_encode(['success' => false, 'message' => 'Unauthorized']);
                 exit;
             }
@@ -97,7 +97,7 @@ if (isset($_GET['action']) || isset($_POST['action'])) {
             exit;
             
         case 'delete_review':
-            if (!$userRoles['isAdmin']) {
+            if (!($userRoles['isAdmin'] ?? false)) {
                 echo json_encode(['success' => false, 'message' => 'Unauthorized']);
                 exit;
             }
@@ -165,7 +165,7 @@ $stats = $reviewService->getReviewStats($userRole, $userId);
                             <h2>Review Management</h2>
                             <p>Manage customer reviews and ratings for products and vendors</p>
                         </div>
-                        <?php if ($userRoles['isAdmin'] || $userRoles['isStaff']): ?>
+                        <?php if (($userRoles['isAdmin'] ?? false) || ($userRoles['isStaff'] ?? false)): ?>
                         <div class="header-actions">
                             <button class="btn btn-warning" onclick="showPendingReviews()">
                                 <i class="fas fa-clock"></i>
@@ -303,7 +303,7 @@ $stats = $reviewService->getReviewStats($userRole, $userId);
                 <div class="content-card">
                     <div class="card-header">
                         <h3 id="reviewsTitle">Product Reviews</h3>
-                        <?php if ($userRoles['isAdmin'] || $userRoles['isStaff']): ?>
+                        <?php if (($userRoles['isAdmin'] ?? false) || ($userRoles['isStaff'] ?? false)): ?>
                         <div class="bulk-actions" id="bulkActions" style="display: none;">
                             <label class="bulk-select-all">
                                 <input type="checkbox" id="selectAllReviews"> Select All
@@ -316,7 +316,7 @@ $stats = $reviewService->getReviewStats($userRole, $userId);
                                 <button class="btn btn-warning btn-sm" onclick="bulkModerate('reject')">
                                     <i class="fas fa-times"></i> Reject
                                 </button>
-                                <?php if ($userRoles['isAdmin']): ?>
+                                <?php if ($userRoles['isAdmin'] ?? false): ?>
                                 <button class="btn btn-danger btn-sm" onclick="bulkDelete()">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
@@ -334,7 +334,7 @@ $stats = $reviewService->getReviewStats($userRole, $userId);
                             <table class="management-table" id="reviewsTable" style="display: none;">
                                 <thead>
                                     <tr>
-                                        <?php if ($userRoles['isAdmin'] || $userRoles['isStaff']): ?>
+                                        <?php if (($userRoles['isAdmin'] ?? false) || ($userRoles['isStaff'] ?? false)): ?>
                                         <th width="40">
                                             <input type="checkbox" id="selectAll">
                                         </th>
@@ -383,7 +383,7 @@ $stats = $reviewService->getReviewStats($userRole, $userId);
     </div>
 
     <!-- Bulk Moderation Modal -->
-    <?php if ($userRoles['isAdmin'] || $userRoles['isStaff']): ?>
+    <?php if (($userRoles['isAdmin'] ?? false) || ($userRoles['isStaff'] ?? false)): ?>
     <div id="bulkModerationModal" class="modal">
         <div class="modal-content medium-modal">
             <div class="modal-header">

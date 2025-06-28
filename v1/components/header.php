@@ -56,8 +56,8 @@ $pageTitle = $pageTitle ?? 'Dashboard';
         
         <!-- Cart Icon - Only show for customers -->
         <?php 
-        $userRoles = explode(',', $currentUser['roles'] ?? '');
-        if (in_array('customer', $userRoles)): 
+        $userRolesList = explode(',', $currentUser['roles'] ?? '');
+        if (in_array('customer', $userRolesList)): 
             // Load models for cart count
             require_once __DIR__ . '/../../models/ModelLoader.php';
             $ShoppingCart = ModelLoader::load('ShoppingCart');
