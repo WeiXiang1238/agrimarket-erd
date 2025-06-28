@@ -110,8 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             case 'assign_task':
                 $taskData = [
                     'staff_id' => $_POST['staff_id'],
-                    'task_title' => $_POST['task_title'],
-                    'task_description' => $_POST['task_description'],
+                    'title' => $_POST['title'],
+                    'description' => $_POST['description'],
                     'priority' => $_POST['priority'] ?? 'medium',
                     'due_date' => $_POST['due_date'] ?? null
                 ];
@@ -142,8 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             case 'update_task':
                 $taskData = [
                     'task_id' => $_POST['task_id'],
-                    'task_title' => $_POST['task_title'],
-                    'task_description' => $_POST['task_description'],
+                    'title' => $_POST['title'],
+                    'description' => $_POST['description'],
                     'priority' => $_POST['priority'] ?? 'medium',
                     'due_date' => $_POST['due_date'] ?? null
                 ];
@@ -660,14 +660,14 @@ $statuses = ['active', 'inactive', 'terminated'];
                     
                     <div class="form-group">
                         <label>Task Title *</label>
-                        <input type="text" id="taskTitle" name="task_title" required maxlength="100" placeholder="Enter task title">
+                        <input type="text" id="taskTitle" name="title" required maxlength="100" placeholder="Enter task title">
                         <div class="error-message" id="taskTitleError"></div>
                         <small class="help-text">Brief title describing the task (max 100 characters)</small>
                     </div>
                     
                     <div class="form-group">
                         <label>Task Description</label>
-                        <textarea id="taskDescription" name="task_description" rows="4" maxlength="500" placeholder="Describe the task details, requirements, and expectations..."></textarea>
+                        <textarea id="taskDescription" name="description" rows="4" maxlength="500" placeholder="Describe the task details, requirements, and expectations..."></textarea>
                         <div class="error-message" id="taskDescriptionError"></div>
                         <small class="help-text">Detailed description of the task (max 500 characters)</small>
                     </div>
@@ -777,11 +777,11 @@ $statuses = ['active', 'inactive', 'terminated'];
                     <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                     <div class="form-group">
                         <label>Task Title *</label>
-                        <input type="text" id="editTaskTitle" name="task_title" required maxlength="100">
+                        <input type="text" id="editTaskTitle" name="title" required maxlength="100">
                     </div>
                     <div class="form-group">
                         <label>Task Description</label>
-                        <textarea id="editTaskDescription" name="task_description" rows="4" maxlength="500"></textarea>
+                        <textarea id="editTaskDescription" name="description" rows="4" maxlength="500"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Priority</label>
@@ -810,6 +810,17 @@ $statuses = ['active', 'inactive', 'terminated'];
         let currentFilters = {};
         let staffToDelete = null;
         let currentViewStaffId = null;
+
+        // Format date helper function
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
@@ -855,21 +866,48 @@ $statuses = ['active', 'inactive', 'terminated'];
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 loadingIndicator.style.display = 'none';
                 
-                if (data.success && data.staff.length > 0) {
-                    displayStaffData(data.staff);
-                    displayPagination(data.pagination);
-                } else {
+                if (!data) {
+                    console.error('No data received from server');
                     noDataMessage.style.display = 'block';
-                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                if (!data.success) {
+                    console.error('Server returned error:', data.message);
+                    noDataMessage.style.display = 'block';
+                    noDataMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i><p>${data.message || 'Failed to load staff data'}</p>`;
+                    return;
+                }
+
+                if (!data.staff || !Array.isArray(data.staff)) {
+                    console.error('Invalid staff data received:', data);
+                    noDataMessage.style.display = 'block';
+                    return;
+                }
+
+                if (data.staff.length === 0) {
+                    noDataMessage.style.display = 'block';
+                    return;
+                }
+
+                displayStaffData(data.staff);
+                if (data.pagination) {
+                    displayPagination(data.pagination);
                 }
             })
             .catch(error => {
                 loadingIndicator.style.display = 'none';
                 noDataMessage.style.display = 'block';
+                noDataMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i><p>Error loading staff data: ${error.message}</p>`;
                 console.error('Error:', error);
             });
         }
@@ -1181,18 +1219,18 @@ $statuses = ['active', 'inactive', 'terminated'];
                         tasksHTML += `
                             <div class="task-item ${priorityClass} ${statusClass}">
                                 <div class="task-header">
-                                    <h5>${task.task_title}</h5>
+                                    <h5>${task.title}</h5>
                                     <div class="task-meta">
                                         <span class="priority-badge ${priorityClass}">${task.priority}</span>
                                         <span class="status-badge ${statusClass}">${task.status}</span>
                                     </div>
                                 </div>
-                                <div class="task-description">${task.task_description || 'No description provided'}</div>
+                                <div class="task-description">${task.description || 'No description provided'}</div>
                                 <div class="task-footer">
                                     <span class="task-date" style="margin-right: 1.5rem;">Assigned: ${formatDate(task.assigned_date)}</span>
                                     ${task.due_date ? `<span class="task-due" style="margin-right: 1.5rem;">Due: ${formatDate(task.due_date)}</span>` : ''}
                                     ${completedDate ? `<span class="task-completed" style="color:#059669; margin-right: 1.5rem;">Completed: ${completedDate}</span>` : ''}
-                                    <button class="btn btn-secondary btn-sm" style="margin-left:1rem;" onclick="openEditTaskModal(${task.task_id}, '${encodeURIComponent(task.task_title)}', '${encodeURIComponent(task.task_description || '')}', '${task.priority}', '${task.due_date || ''}')">Edit</button>
+                                    <button class="btn btn-secondary btn-sm" style="margin-left:1rem;" onclick="openEditTaskModal(${task.task_id}, '${encodeURIComponent(task.title)}', '${encodeURIComponent(task.description || '')}', '${task.priority}', '${task.due_date || ''}')">Edit</button>
                                 </div>
                             </div>
                         `;
@@ -1456,11 +1494,6 @@ $statuses = ['active', 'inactive', 'terminated'];
         }
 
         // Utility functions
-        function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            return new Date(dateString).toLocaleDateString();
-        }
-
         function debounce(func, wait) {
             let timeout;
             return function executedFunction(...args) {
