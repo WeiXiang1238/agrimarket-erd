@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../Db_Connect.php';
 require_once __DIR__ . '/../models/ModelLoader.php';
+require_once __DIR__ . '/NotificationService.php';
 
 /**
  * Analytics Service
@@ -16,6 +17,7 @@ class AnalyticsService
     private $Product;
     private $Vendor;
     private $Order;
+    private $notificationService;
 
     public function __construct()
     {
@@ -34,6 +36,7 @@ class AnalyticsService
         $this->Product = ModelLoader::load('Product');
         $this->Vendor = ModelLoader::load('Vendor');
         $this->Order = ModelLoader::load('Order');
+        $this->notificationService = new NotificationService();
     }
 
     /**
@@ -345,10 +348,111 @@ class AnalyticsService
                 $analytics['vendor_performance'] = $this->getVendorPerformance($vendorId);
             }
 
+            // Create notifications for important insights
+            $this->createAnalyticsNotifications($analytics, $userRole, $userId, $vendorId);
+
             return $analytics;
             
         } catch (Exception $e) {
             error_log("Error getting dashboard analytics: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Create notifications for important analytics insights
+     */
+    private function createAnalyticsNotifications($analytics, $userRole, $userId, $vendorId)
+    {
+        try {
+            if (!$userId) return;
+
+            $overview = $analytics['overview'] ?? [];
+            $orders = $overview['orders'] ?? [];
+            $searches = $overview['searches'] ?? [];
+            $visits = $overview['visits'] ?? [];
+
+            // Check for significant performance indicators
+            $notifications = [];
+
+            // High search volume notification
+            if (($searches['total_searches'] ?? 0) > 1000) {
+                $notifications[] = [
+                    'title' => 'High Search Activity',
+                    'message' => 'Your platform has received ' . number_format($searches['total_searches']) . ' searches in the last 30 days!',
+                    'type' => 'analytics'
+                ];
+            }
+
+            // Revenue milestone notification
+            if (($orders['total_revenue'] ?? 0) > 10000) {
+                $notifications[] = [
+                    'title' => 'Revenue Milestone',
+                    'message' => 'Congratulations! Total revenue reached $' . number_format($orders['total_revenue'], 2) . ' in the last 30 days.',
+                    'type' => 'analytics'
+                ];
+            }
+
+            // High order volume notification
+            if (($orders['total_orders'] ?? 0) > 100) {
+                $notifications[] = [
+                    'title' => 'High Order Volume',
+                    'message' => 'You have processed ' . number_format($orders['total_orders']) . ' orders in the last 30 days.',
+                    'type' => 'analytics'
+                ];
+            }
+
+            // Low stock notification for vendors
+            if ($userRole === 'vendor' && $vendorId) {
+                $lowStockProducts = $this->getLowStockProducts($vendorId);
+                if (!empty($lowStockProducts)) {
+                    $notifications[] = [
+                        'title' => 'Low Stock Alert',
+                        'message' => count($lowStockProducts) . ' products are running low on stock. Consider restocking soon.',
+                        'type' => 'analytics'
+                    ];
+                }
+            }
+
+            // Create notifications (limit to prevent spam)
+            $notificationCount = 0;
+            foreach ($notifications as $notification) {
+                if ($notificationCount >= 3) break; // Max 3 notifications per analytics load
+                
+                $this->notificationService->createNotification(
+                    $userId,
+                    $notification['title'],
+                    $notification['message'],
+                    $notification['type']
+                );
+                $notificationCount++;
+            }
+
+        } catch (Exception $e) {
+            error_log('Error creating analytics notifications: ' . $e->getMessage());
+            // Don't fail analytics if notifications fail
+        }
+    }
+
+    /**
+     * Get low stock products for vendor
+     */
+    private function getLowStockProducts($vendorId)
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT product_id, name, stock_quantity
+                FROM products
+                WHERE vendor_id = ? 
+                AND is_archive = 0 
+                AND stock_quantity <= 10
+                ORDER BY stock_quantity ASC
+                LIMIT 5
+            ");
+            $stmt->execute([$vendorId]);
+            return $stmt->fetchAll();
+        } catch (Exception $e) {
+            error_log('Error getting low stock products: ' . $e->getMessage());
             return [];
         }
     }
@@ -630,7 +734,7 @@ class AnalyticsService
     /**
      * Export analytics data to CSV
      */
-    public function exportAnalyticsData($reportType, $timeframe = '30 days', $userRole = 'admin', $vendorId = null)
+    public function exportAnalyticsData($reportType, $timeframe = '30 days', $userRole = 'admin', $vendorId = null, $userId = null)
     {
         try {
             $data = [];
@@ -663,6 +767,21 @@ class AnalyticsService
             
             // Generate CSV content
             $csvContent = $this->generateCSVContent($data);
+            
+            // Create notification for successful export
+            if ($userId) {
+                try {
+                    $this->notificationService->createNotification(
+                        $userId,
+                        'Analytics Report Exported',
+                        ucfirst(str_replace('_', ' ', $reportType)) . ' report has been successfully exported for ' . $timeframe . ' timeframe.',
+                        'analytics'
+                    );
+                } catch (Exception $e) {
+                    error_log('Error creating export notification: ' . $e->getMessage());
+                    // Don't fail export if notification fails
+                }
+            }
             
             return [
                 'success' => true,

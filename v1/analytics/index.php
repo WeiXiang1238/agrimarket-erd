@@ -4,11 +4,13 @@ require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AnalyticsService.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/PermissionService.php';
+require_once __DIR__ . '/../../services/NotificationService.php';
 
 // Initialize services
 $authService = new AuthService();
 $permissionService = new PermissionService();
 $analyticsService = new AnalyticsService();
+$notificationService = new NotificationService();
 
 // Check authentication
 if (!$authService->isAuthenticated()) {
@@ -18,6 +20,27 @@ if (!$authService->isAuthenticated()) {
 
 // Get current user
 $currentUser = $authService->getCurrentUser();
+
+// Get notifications for the current user
+$userNotifications = [];
+$unreadCount = 0;
+if ($currentUser) {
+    $userNotifications = $notificationService->getUserNotifications($currentUser['user_id'], 10);
+    $unreadCount = 0;
+    foreach ($userNotifications as $notif) {
+        if (!$notif['is_read']) $unreadCount++;
+    }
+    
+    // Add a test notification for analytics (remove this in production)
+    // if (empty($userNotifications)) {
+    //     $notificationService->createNotification(
+    //         $currentUser['user_id'],
+    //         'Analytics Test',
+    //         'Analytics notifications are working correctly!',
+    //         'analytics'
+    //     );
+    // }
+}
 
 // Check permissions
 if (!$permissionService->hasPermission($currentUser, 'view_analytics') && 
@@ -107,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'export_data':
                 $reportType = $_POST['report_type'] ?? '';
                 $timeframe = $_POST['timeframe'] ?? '30 days';
-                $result = $analyticsService->exportAnalyticsData($reportType, $timeframe, $userRole, $vendorId);
+                $result = $analyticsService->exportAnalyticsData($reportType, $timeframe, $userRole, $vendorId, $currentUser['user_id']);
                 
                 if ($result['success']) {
                     header('Content-Type: text/csv');
