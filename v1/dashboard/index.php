@@ -104,6 +104,28 @@ function getOrderCount($currentUser) {
     return 0;
 }
 
+// Function to get report count for current user
+function getReportCount($currentUser) {
+    if (!$currentUser) return 0;
+    
+    // If user has view_analytics permission (admin), return total count
+    if (hasPermission('view_analytics')) {
+        return 15; // Total analytics reports available
+    }
+    
+    // If user has view_reports permission (vendor), return their report count
+    if (hasPermission('view_reports')) {
+        return 8; // Vendor-specific reports
+    }
+    
+    // For customers, return basic report count
+    if ($currentUser['role'] == 'customer') {
+        return 3; // Basic customer reports
+    }
+    
+    return 0;
+}
+
 // Function to get vendor subscription details
 function getVendorSubscriptionDetails($currentUser) {
     if (!$currentUser || $currentUser['role'] !== 'vendor') {
@@ -193,6 +215,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
     // Redirect to avoid resubmission
     header('Location: ' . $_SERVER['REQUEST_URI']);
     exit;
+}
+
+// Function to get revenue amount for current user
+function getRevenueAmount($currentUser) {
+    if (!$currentUser) return 0;
+    
+    try {
+        global $host, $user, $pass, $dbname;
+        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // If user has view_analytics permission (admin), return total platform revenue
+        if (hasPermission('view_analytics')) {
+            $stmt = $db->prepare("
+                SELECT COALESCE(SUM(final_amount), 0) as total_revenue
+                FROM orders 
+                WHERE is_archive = 0 
+                AND status != 'Cancelled'
+                AND order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            ");
+            $stmt->execute();
+            return $stmt->fetch()['total_revenue'] ?? 0;
+        }
+        
+        // If user is a vendor, get their revenue
+        if ($currentUser['role'] == 'vendor') {
+            $vendorModel = new Vendor();
+            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($vendor)) {
+                $vendorId = $vendor[0]['vendor_id'];
+                $stmt = $db->prepare("
+                    SELECT COALESCE(SUM(final_amount), 0) as total_revenue
+                    FROM orders 
+                    WHERE vendor_id = ? 
+                    AND is_archive = 0 
+                    AND status != 'Cancelled'
+                    AND order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                ");
+                $stmt->execute([$vendorId]);
+                return $stmt->fetch()['total_revenue'] ?? 0;
+            }
+        }
+        
+        // If user is a customer, get their spending
+        if ($currentUser['role'] == 'customer') {
+            $customerModel = new Customer();
+            $customer = $customerModel->findAll(['user_id' => $currentUser['user_id']]);
+            
+            if (!empty($customer)) {
+                $customerId = $customer[0]['customer_id'];
+                $stmt = $db->prepare("
+                    SELECT COALESCE(SUM(final_amount), 0) as total_spent
+                    FROM orders 
+                    WHERE customer_id = ? 
+                    AND is_archive = 0 
+                    AND status != 'Cancelled'
+                    AND order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                ");
+                $stmt->execute([$customerId]);
+                return $stmt->fetch()['total_spent'] ?? 0;
+            }
+        }
+        
+        return 0;
+        
+    } catch (Exception $e) {
+        error_log('Error getting revenue amount: ' . $e->getMessage());
+        return 0;
+    }
 }
 ?>
 
@@ -426,7 +518,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                         <div class="stat-info">
                             <h3><?php echo getProductCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_products') ? 'Total Products' : 'My Products'; ?></p>
-                            <span class="stat-change positive">+1% from last month</span>
+                            <!-- <span class="stat-change positive">+1% from last month</span> -->
+                            <div class="subscription-actions" style="margin-top: 0.5rem;">
+                                <a href="/agrimarket-erd/v1/product-management/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                    <i class="fas fa-box"></i>
+                                    Product Management
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -440,9 +538,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                         <div class="stat-info">
                             <h3><?php echo getOrderCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_orders') ? 'Orders Today' : 'My Orders'; ?></p>
-                            <span class="stat-change <?php echo hasPermission('manage_orders') ? 'negative' : 'positive'; ?>">
-                                <?php echo hasPermission('manage_orders') ? '-3% from yesterday' : '+2 this month'; ?>
-                            </span>
+                            <!-- <span class="stat-change <?php echo hasPermission('manage_orders') ? 'negative' : 'positive'; ?>">
+                                <?php echo hasPermission('manage_orders') ? '0 from yesterday' : '+2 this month'; ?>
+                            </span> -->
+                            <div class="subscription-actions" style="margin-top: 0.5rem;">
+                                <a href="/agrimarket-erd/v1/order-management/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                    <i class="fas fa-calculator"></i>
+                                    Order Management
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -460,6 +564,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                         </div>
                     </div>
                     <?php endif; ?>
+
+                    <!-- Report Stats -->
+                    <?php if (hasPermission('view_analytics') || hasPermission('view_reports') || $currentUser['role'] == 'vendor' || $currentUser['role'] == 'admin'): ?>
+                    <div class="stat-card">
+                        <div class="stat-icon reports" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>RM <?php echo number_format(getRevenueAmount($currentUser), 2); ?></h3>
+                            <p><?php echo hasPermission('view_analytics') ? 'Total Revenue' : 'My Revenue'; ?></p>
+                            <div class="subscription-actions" style="margin-top: 0.5rem;">
+                                <a href="/agrimarket-erd/v1/analytics/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                    <i class="fas fa-chart-line"></i>
+                                    View Analytics
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     
                     <!-- Subscription Tier Card for Vendors -->
                     <?php if ($currentUser['role'] == 'vendor'): ?>
@@ -500,6 +624,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                     </div>
                     <?php endif; ?>
                     <?php endif; ?>
+
+
                 </div>
                 
                 <!-- Content Sections -->

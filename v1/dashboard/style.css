@@ -90,6 +90,10 @@
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
 }
 
+.stat-icon.reports {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
 .stat-info h3 {
     font-size: 2rem;
     font-weight: 700;
