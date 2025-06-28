@@ -22,8 +22,29 @@ if (!class_exists('PermissionService')) {
 // Get user permissions using PermissionService
 $userPermissions = [];
 if (isset($currentUser)) {
-    $permissionService = new PermissionService();
-    $userPermissions = $permissionService->getEffectivePermissions($currentUser);
+    try {
+        $permissionService = new PermissionService();
+        $userPermissions = $permissionService->getEffectivePermissions($currentUser);
+    } catch (Exception $e) {
+        // Fallback to basic role-based permissions if PermissionService fails
+        $role = $currentUser['role'] ?? 'customer';
+        switch ($role) {
+            case 'admin':
+                $userPermissions = ['manage_users', 'manage_vendors', 'manage_products', 'manage_orders', 'view_analytics', 'manage_system', 'manage_staff', 'manage_promotions'];
+                break;
+            case 'vendor':
+                $userPermissions = ['manage_products', 'manage_orders', 'manage_inventory', 'view_reports'];
+                break;
+            case 'staff':
+                $userPermissions = ['customer_support', 'manage_orders'];
+                break;
+            case 'customer':
+            default:
+                $userPermissions = ['place_orders', 'view_orders'];
+                break;
+        }
+        $userPermissions = array_flip($userPermissions);
+    }
 }
 
 function hasSidebarPermission($permission) {
@@ -146,7 +167,7 @@ function hasSidebarPermission($permission) {
                     <span>Shop Products</span>
                 </a>
             </li>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ?>">
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false && basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/shop/" id="sidebar-shop-link">
                     <i class="fas fa-store"></i>

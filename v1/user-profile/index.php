@@ -336,42 +336,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     $updateMessage = 'Profile updated successfully!';
                     // Refresh current user data
                     $currentUser = (new User())->find($currentUser['user_id']);
+                    
+                    // Create notification for successful profile update
+                    require_once __DIR__ . '/../../models/Notification.php';
+                    $notificationModel = new Notification();
+                    $notificationData = [
+                        'user_id' => $currentUser['user_id'],
+                        'message' => 'Your profile information has been updated successfully!',
+                        'type' => 'profile_update',
+                        'is_read' => 0,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                    $notificationModel->create($notificationData);
                 } else {
                     $updateError = 'Failed to update profile. Please try again.';
                 }
-            }
-        }
-    }
-}
-
-// Handle password change
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $csrfToken) {
-        $updateError = 'Invalid request. Please try again.';
-    } else {
-        $currentPassword = $_POST['current_password'] ?? '';
-        $newPassword = $_POST['new_password'] ?? '';
-        $confirmPassword = $_POST['confirm_password'] ?? '';
-        
-        if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
-            $updateError = 'All password fields are required.';
-        } elseif ($newPassword !== $confirmPassword) {
-            $updateError = 'New passwords do not match.';
-        } elseif (strlen($newPassword) < 6) {
-            $updateError = 'New password must be at least 6 characters long.';
-        } else {
-            $userModel = new User();
-            $user = $userModel->find($currentUser['user_id']);
-            
-            if (password_verify($currentPassword, $user['password'])) {
-                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                if ($userModel->update($currentUser['user_id'], ['password' => $hashedPassword])) {
-                    $updateMessage = 'Password changed successfully!';
-                } else {
-                    $updateError = 'Failed to change password. Please try again.';
-                }
-            } else {
-                $updateError = 'Current password is incorrect.';
             }
         }
     }
@@ -559,149 +538,20 @@ if ($currentUser['role'] === 'staff' && !empty($additionalData['created_at'])) {
                         </div>
                     </div>
 
-                    <!-- Change Password -->
+                    <!-- Settings Link Card -->
                     <div class="profile-card">
                         <div class="card-header">
-                            <h2><i class="fas fa-lock"></i> Change Password</h2>
+                            <h2><i class="fas fa-cog"></i> Account Settings</h2>
                         </div>
                         <div class="card-body">
-                            <form method="POST" action="">
-                                <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-                                
-                                <div class="form-group">
-                                    <label class="form-label">Current Password</label>
-                                    <input type="password" name="current_password" class="form-control" required>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">New Password</label>
-                                    <input type="password" name="new_password" class="form-control" 
-                                           minlength="6" required>
-                                    <small class="form-text">Minimum 6 characters</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label">Confirm New Password</label>
-                                    <input type="password" name="confirm_password" class="form-control" required>
-                                </div>
-
-                                <button type="submit" name="change_password" class="btn btn-warning">
-                                    <i class="fas fa-key"></i> Change Password
-                                </button>
-                            </form>
+                            <p style="color: #64748b; margin-bottom: 1.5rem;">
+                                Manage your account security, password, and subscription settings.
+                            </p>
+                            <a href="/agrimarket-erd/v1/user-profile/settings.php" class="btn btn-outline-primary">
+                                <i class="fas fa-cog"></i> Go to Settings
+                            </a>
                         </div>
                     </div>
-
-                    <!-- Account Statistics -->
-                    <div class="profile-card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-chart-bar"></i> Account Statistics</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="stats-list">
-                                <div class="stat-item">
-                                    <div class="stat-label">Member Since</div>
-                                    <div class="stat-value">
-                                        <?php echo $statCreatedAt ? date('M j, Y', strtotime($statCreatedAt)) : 'N/A'; ?>
-                                    </div>
-                                </div>
-                                
-                                <div class="stat-item">
-                                    <div class="stat-label">Last Login</div>
-                                    <div class="stat-value">
-                                        <?php echo $statLastLogin ? date('M j, Y H:i', strtotime($statLastLogin)) : 'N/A'; ?>
-                                    </div>
-                                </div>
-                                
-                                <div class="stat-item">
-                                    <div class="stat-label">Account Status</div>
-                                    <div class="stat-value">
-                                        <span class="badge badge-success">Active</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Vendor Subscription Card (only for vendors) -->
-                    <?php
-                    if ($currentUser['role'] === 'vendor' && !empty($additionalData['vendor_id'])) {
-                        require_once __DIR__ . '/../../models/VendorSubscription.php';
-                        require_once __DIR__ . '/../../models/SubscriptionTier.php';
-                        $vendorSubModel = new VendorSubscription();
-                        $activeSub = $vendorSubModel->findAll(['vendor_id' => $additionalData['vendor_id'], 'is_active' => 1]);
-                        if (!empty($activeSub)) {
-                            $sub = $activeSub[0];
-                            $tierModel = new SubscriptionTier();
-                            $tier = $tierModel->find($sub['tier_id']);
-                            ?>
-                            <div class="profile-card">
-                                <div class="card-header">
-                                    <h2><i class="fas fa-crown"></i> Vendor Subscription</h2>
-                                </div>
-                                <div class="card-body">
-                                    <div class="form-group">
-                                        <label class="form-label">Subscription Tier</label>
-                                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($tier['name'] ?? ''); ?>" readonly>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Description</label>
-                                        <textarea class="form-control" rows="2" readonly><?php echo htmlspecialchars($tier['description'] ?? ''); ?></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Monthly Fee</label>
-                                        <input type="text" class="form-control" value="<?php echo isset($tier['monthly_fee']) ? 'RM ' . number_format($tier['monthly_fee'], 2) : ''; ?>" readonly>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Due Date</label>
-                                        <input type="text" class="form-control" value="<?php echo htmlspecialchars($sub['end_date'] ?? ''); ?>" readonly>
-                                    </div>
-                                    <div style="text-align: right; margin-top: 1.5rem;">
-                                        <a href="/agrimarket-erd/v1/subscription/subscription-plan.php?source=profile" class="btn btn-primary">
-                                            <i class="fas fa-exchange-alt"></i> Change Plan
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php
-                        }
-                    }
-                    ?>
-
-                    <!-- Security Settings -->
-                    <div class="profile-card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-shield-alt"></i> Security Settings</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="security-options">
-                                <div class="security-item">
-                                    <div class="security-info">
-                                        <h4>Two-Factor Authentication</h4>
-                                        <p>Add an extra layer of security to your account</p>
-                                    </div>
-                                    <button class="btn btn-outline-primary btn-sm">Enable</button>
-                                </div>
-                                
-                                <div class="security-item">
-                                    <div class="security-info">
-                                        <h4>Login Notifications</h4>
-                                        <p>Get notified when someone logs into your account</p>
-                                    </div>
-                                    <button class="btn btn-outline-primary btn-sm">Enable</button>
-                                </div>
-                                
-                                <div class="security-item">
-                                    <div class="security-info">
-                                        <h4>Session Management</h4>
-                                        <p>View and manage your active sessions</p>
-                                    </div>
-                                    <button class="btn btn-outline-secondary btn-sm">Manage</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
 
                 </div>
             </div>

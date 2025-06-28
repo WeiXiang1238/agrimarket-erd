@@ -12,8 +12,19 @@ class PermissionService
     
     public function __construct()
     {
-        global $host, $user, $pass, $dbname;
         try {
+            // Include database configuration
+            require_once __DIR__ . '/../Db_Connect.php';
+            
+            // Use the global variables from Db_Connect.php
+            global $host, $user, $pass, $dbname;
+            
+            // Ensure variables are strings, not arrays
+            $host = is_array($host) ? 'localhost' : (string)$host;
+            $user = is_array($user) ? 'root' : (string)$user;
+            $pass = is_array($pass) ? '' : (string)$pass;
+            $dbname = is_array($dbname) ? 'group_assignment' : (string)$dbname;
+            
             $this->db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
             $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
