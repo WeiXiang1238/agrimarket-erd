@@ -1,4 +1,7 @@
 <?php
+// Set timezone to Asia/Kuala_Lumpur for Malaysian time
+date_default_timezone_set('Asia/Kuala_Lumpur');
+
 require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/PermissionService.php';
@@ -298,14 +301,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
                                         <?php if ($tasks && count($tasks) > 0): ?>
                                             <?php foreach ($tasks as $task): ?>
                                                 <tr>
-                                                    <td style="padding: 0.75rem;"><?php echo htmlspecialchars($task['task_title']); ?></td>
-                                                    <td style="padding: 0.75rem;"><?php echo htmlspecialchars($task['task_description'] ?? ''); ?></td>
-                                                    <td style="padding: 0.75rem;"><?php echo $task['assigned_date'] ? date('M j, Y h:i A', strtotime($task['assigned_date'])) : '-'; ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo htmlspecialchars($task['title']); ?></td>
+                                                    <td style="padding: 0.75rem;"><?php echo htmlspecialchars($task['description'] ?? ''); ?></td>
+                                                    <td style="padding: 0.75rem;"><?php 
+                                                        if ($task['assigned_date']) {
+                                                            $date = new DateTime($task['assigned_date']);
+                                                            echo $date->format('M j, Y h:i A');
+                                                        } else {
+                                                            echo '-';
+                                                        }
+                                                    ?></td>
                                                     <td style="padding: 0.75rem;"><?php echo ucfirst($task['priority']); ?></td>
                                                     <td style="padding: 0.75rem;"><?php echo ucfirst($task['status']); ?></td>
-                                                    <td style="padding: 0.75rem;"><?php echo $task['due_date'] ? date('M j', strtotime($task['due_date'])) : '-'; ?></td>
+                                                    <td style="padding: 0.75rem;"><?php 
+                                                        if ($task['due_date']) {
+                                                            $date = new DateTime($task['due_date']);
+                                                            echo $date->format('M j, Y h:i A');
+                                                        } else {
+                                                            echo '-';
+                                                        }
+                                                    ?></td>
                                                     <td style="padding: 0.75rem;">
-                                                        <?php echo $task['completed_date'] ? date('M j, Y h:i A', strtotime($task['completed_date'])) : '-'; ?>
+                                                        <?php 
+                                                        if ($task['completed_date']) {
+                                                            $date = new DateTime($task['completed_date']);
+                                                            echo $date->format('M j, Y h:i A');
+                                                        } else {
+                                                            echo '-';
+                                                        }
+                                                        ?>
                                                     </td>
                                                     <td style="padding: 0.75rem; text-align:center;">
                                                         <form method="POST" action="" style="margin:0;">

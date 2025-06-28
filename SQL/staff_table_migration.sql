@@ -2,10 +2,10 @@
 -- This script updates the existing staffs table to include all necessary fields for staff management
 
 -- First, let's rename the existing table to backup
-RENAME TABLE `staffs` TO `staffs_backup`;
+RENAME TABLE IF EXISTS `staffs` TO `staffs_backup`;
 
 -- Create the new comprehensive staff table
-CREATE TABLE `staff` (
+CREATE TABLE IF NOT EXISTS `staff` (
   `staff_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `employee_id` varchar(20) NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS `staff_tasks` (
   `status` enum('pending','in_progress','completed','cancelled') DEFAULT 'pending',
   `assigned_date` date NOT NULL,
   `due_date` date DEFAULT NULL,
-  `completed_date` date DEFAULT NULL,
+  `completed_date` DATETIME NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`task_id`),
@@ -79,4 +79,16 @@ ALTER TABLE `staff_tasks`
   ADD CONSTRAINT `staff_tasks_staff_fk` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON DELETE CASCADE;
 
 -- You can drop the backup table after confirming everything works
--- DROP TABLE `staffs_backup`; 
+-- DROP TABLE `staffs_backup`;
+
+-- Modify completed_date column to use DATETIME instead of TIMESTAMP
+ALTER TABLE `staff_tasks` 
+MODIFY COLUMN `completed_date` DATETIME NULL DEFAULT NULL;
+
+-- Reset any existing completed dates that might be wrong
+UPDATE `staff_tasks` 
+SET `completed_date` = NULL 
+WHERE `completed_date` = '2025-06-28 08:00:00';
+
+-- Create database if not exists
+CREATE DATABASE IF NOT EXISTS `

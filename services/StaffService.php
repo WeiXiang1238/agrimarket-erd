@@ -1,4 +1,6 @@
 <?php
+// Set timezone to Asia/Kuala_Lumpur for Malaysian time
+date_default_timezone_set('Asia/Kuala_Lumpur');
 
 require_once __DIR__ . '/../Db_Connect.php';
 
@@ -707,7 +709,7 @@ class StaffService
             
             $stmt = $db->prepare("
                 INSERT INTO staff_tasks (
-                    staff_id, task_title, task_description, priority, 
+                    staff_id, title, description, priority, 
                     status, due_date, assigned_date
                 ) VALUES (?, ?, ?, ?, 'pending', ?, NOW())
             ");
@@ -739,8 +741,8 @@ class StaffService
         $stmt = $db->prepare("
             SELECT 
                 task_id,
-                task_title,
-                task_description,
+                title,
+                description,
                 priority,
                 status,
                 due_date,
@@ -816,8 +818,22 @@ class StaffService
     public function markTaskCompleted($taskId)
     {
         $db = $this->db;
-        $stmt = $db->prepare("UPDATE staff_tasks SET status = 'completed', completed_date = NOW() WHERE task_id = ?");
-        return $stmt->execute([$taskId]);
+        
+        // Create DateTime object with current time in KL timezone
+        $now = new DateTime('now', new DateTimeZone('Asia/Kuala_Lumpur'));
+        $currentTime = $now->format('Y-m-d H:i:s');
+        
+        // Log the time for debugging
+        error_log("Setting completed_date to: " . $currentTime);
+        
+        $stmt = $db->prepare("
+            UPDATE staff_tasks 
+            SET status = 'completed', 
+                completed_date = ? 
+            WHERE task_id = ?
+        ");
+        
+        return $stmt->execute([$currentTime, $taskId]);
     }
     
     /**
@@ -842,8 +858,8 @@ class StaffService
             }
             $stmt = $db->prepare("
                 UPDATE staff_tasks SET
-                    task_title = ?,
-                    task_description = ?,
+                    title = ?,
+                    description = ?,
                     priority = ?,
                     due_date = ?
                 WHERE task_id = ?
