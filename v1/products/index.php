@@ -4,6 +4,12 @@ require_once __DIR__ . '/../../services/ProductService.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/ShoppingCartService.php';
 
+// Set page title for tracking
+$pageTitle = 'Shop Products - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 // Check authentication - customers only
 $authService = new AuthService();
 $currentUser = $authService->getCurrentUser();
@@ -50,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $filters = [
                 'search' => $searchTerm,
                 'category_id' => $_POST['category_id'] ?? '',
+                'vendor_id' => $_POST['vendor_id'] ?? '',
                 'status' => 'active' // Only show active products to customers
             ];
             
@@ -66,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'keyword' => $searchTerm,
                         'filters' => json_encode([
                             'category_id' => $_POST['category_id'] ?? '',
+                            'vendor_id' => $_POST['vendor_id'] ?? '',
                             'search_type' => 'product'
                         ]),
                         'results_count' => $result['total'] ?? 0,
@@ -128,10 +136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page = (int)($_GET['page'] ?? 1);
 $search = $_GET['search'] ?? '';
 $categoryId = $_GET['category_id'] ?? '';
+$vendorId = $_GET['vendor_id'] ?? '';
 
 $filters = [
     'search' => $search,
     'category_id' => $categoryId,
+    'vendor_id' => $vendorId,
     'status' => 'active'
 ];
 
@@ -146,6 +156,21 @@ $categories = $productService->getCategories();
 // Get cart item count
 $cartCount = $cartService->getCartItemCount($customerId);
 $cartItemCount = $cartCount['count'] ?? 0;
+
+// Get vendor name if filtering by vendor
+$vendorName = '';
+if (!empty($vendorId)) {
+    try {
+        require_once __DIR__ . '/../../services/VendorService.php';
+        $vendorService = new VendorService();
+        $vendorResult = $vendorService->getVendorById($vendorId);
+        if ($vendorResult['success']) {
+            $vendorName = $vendorResult['vendor']['business_name'] ?? '';
+        }
+    } catch (Exception $e) {
+        error_log("Error getting vendor name: " . $e->getMessage());
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -176,7 +201,13 @@ $cartItemCount = $cartCount['count'] ?? 0;
                     <div class="page-header">
                         <div>
                             <h2><i class="fas fa-shopping-bag"></i> Shop Products</h2>
-                            <p>Browse and purchase fresh agricultural products</p>
+                            <p>
+                                <?php if (!empty($vendorName)): ?>
+                                    Products from <?php echo htmlspecialchars($vendorName); ?>
+                                <?php else: ?>
+                                    Browse and purchase fresh agricultural products
+                                <?php endif; ?>
+                            </p>
                         </div>
                         <a href="/agrimarket-erd/v1/shopping-cart/" class="btn btn-primary">
                             <i class="fas fa-shopping-cart"></i> 
@@ -204,6 +235,13 @@ $cartItemCount = $cartCount['count'] ?? 0;
                         <?php endforeach; ?>
                     </select>
                     
+                    <?php if (!empty($vendorId)): ?>
+                        <input type="hidden" id="vendorFilter" value="<?php echo htmlspecialchars($vendorId); ?>">
+                        <button class="btn btn-outline-primary" onclick="clearVendorFilter()">
+                            <i class="fas fa-times"></i> Clear Vendor Filter
+                        </button>
+                    <?php endif; ?>
+                    
                     <button class="btn btn-secondary" onclick="clearFilters()">
                         <i class="fas fa-times"></i> Clear Filters
                     </button>
@@ -219,7 +257,13 @@ $cartItemCount = $cartCount['count'] ?? 0;
                                 <i class="fas fa-seedling text-muted" style="font-size: 4rem;"></i>
                             </div>
                             <h3 class="text-muted mb-3">No products found</h3>
-                            <p class="text-muted">Try adjusting your search or filter criteria.</p>
+                            <p class="text-muted">
+                                <?php if (!empty($vendorName)): ?>
+                                    No products available from <?php echo htmlspecialchars($vendorName); ?>.
+                                <?php else: ?>
+                                    Try adjusting your search or filter criteria.
+                                <?php endif; ?>
+                            </p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($products as $product): ?>
@@ -296,22 +340,26 @@ $cartItemCount = $cartCount['count'] ?? 0;
                 <?php if ($totalPages > 1): ?>
                     <div class="pagination">
                         <?php if ($page > 1): ?>
-                            <a href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&category_id=<?php echo urlencode($categoryId); ?>" 
-                               class="btn btn-light">
+                            <a href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&category_id=<?php echo urlencode($categoryId); ?>&vendor_id=<?php echo urlencode($vendorId); ?>" 
+                               class="btn btn-secondary">
                                 <i class="fas fa-chevron-left"></i> Previous
                             </a>
                         <?php endif; ?>
                         
-                        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                            <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&category_id=<?php echo urlencode($categoryId); ?>" 
-                               class="btn <?php echo $page === $i ? 'btn-primary' : 'btn-light'; ?>">
-                                <?php echo $i; ?>
-                            </a>
+                        <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                            <?php if ($i == $page): ?>
+                                <span class="btn btn-primary"><?php echo $i; ?></span>
+                            <?php elseif ($i == 1 || $i == $totalPages || ($i >= $page - 2 && $i <= $page + 2)): ?>
+                                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&category_id=<?php echo urlencode($categoryId); ?>&vendor_id=<?php echo urlencode($vendorId); ?>" 
+                                   class="btn btn-outline-primary"><?php echo $i; ?></a>
+                            <?php elseif ($i == $page - 3 || $i == $page + 3): ?>
+                                <span class="text-muted">...</span>
+                            <?php endif; ?>
                         <?php endfor; ?>
                         
                         <?php if ($page < $totalPages): ?>
-                            <a href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&category_id=<?php echo urlencode($categoryId); ?>" 
-                               class="btn btn-light">
+                            <a href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&category_id=<?php echo urlencode($categoryId); ?>&vendor_id=<?php echo urlencode($vendorId); ?>" 
+                               class="btn btn-secondary">
                                 Next <i class="fas fa-chevron-right"></i>
                             </a>
                         <?php endif; ?>
@@ -353,5 +401,25 @@ $cartItemCount = $cartCount['count'] ?? 0;
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Initialize with server data
+        const initialProducts = <?php echo json_encode($products); ?>;
+        const initialTotalPages = <?php echo $totalPages; ?>;
+        const initialPage = <?php echo $page; ?>;
+        const initialVendorId = '<?php echo $vendorId; ?>';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            displayProducts(initialProducts);
+            updatePagination(initialPage, initialTotalPages);
+        });
+        
+        // Function to clear vendor filter
+        function clearVendorFilter() {
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.delete('vendor_id');
+            window.location.href = currentUrl.toString();
+        }
+    </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

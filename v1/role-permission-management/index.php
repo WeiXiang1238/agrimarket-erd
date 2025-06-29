@@ -4,6 +4,12 @@ require_once '../../Db_Connect.php';
 require_once '../../services/AuthService.php';
 require_once '../../services/PermissionService.php';
 
+// Set page title for tracking
+$pageTitle = 'Role & Permission Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once '../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $permissionService = new PermissionService();
 
@@ -197,5 +203,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_role_details' && isset($_
     </div>
     
     <script src="script.js"></script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

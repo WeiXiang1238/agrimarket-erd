@@ -7,6 +7,12 @@ require_once __DIR__ . '/../../models/Vendor.php';
 require_once __DIR__ . '/../../models/Staff.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
 
+// Set page title for tracking
+$pageTitle = 'User Profile - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $permissionService = new PermissionService();
 $notificationService = new NotificationService();
@@ -809,5 +815,6 @@ if ($currentUser['role'] === 'staff' && !empty($additionalData['created_at'])) {
             }
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

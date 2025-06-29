@@ -5,6 +5,12 @@ require_once '../../services/AuthService.php';
 require_once '../../services/ReviewService.php';
 require_once '../../models/ModelLoader.php';
 
+// Set page title for tracking
+$pageTitle = 'Review Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once '../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $reviewService = new ReviewService();
 
@@ -434,5 +440,6 @@ $stats = $reviewService->getReviewStats($userRole, $userId);
     </div>
 
     <script src="script.js"></script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

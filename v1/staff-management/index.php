@@ -7,6 +7,12 @@ require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/StaffService.php';
 
+// Set page title for tracking
+$pageTitle = 'Staff Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 /**
  * Sends a JSON response and terminates the script.
  * @param mixed $data The data to encode and send.
@@ -1555,5 +1561,6 @@ $statuses = ['active', 'inactive', 'terminated'];
             });
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

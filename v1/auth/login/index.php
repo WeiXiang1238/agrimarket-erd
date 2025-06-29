@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/../../../services/AuthService.php';
 
+// Set page title for tracking
+$pageTitle = 'Login - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../../includes/page_tracking.php';
+
 $authService = new AuthService();
 
 // Redirect if already authenticated
@@ -209,5 +215,6 @@ $csrfToken = $authService->generateCSRFToken();
             return emailRegex.test(email);
         }
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

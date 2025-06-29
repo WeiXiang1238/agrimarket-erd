@@ -522,5 +522,6 @@ $csrfToken = $authService->generateCSRFToken();
             indicator.textContent = `Password Strength: ${strengthText}`;
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

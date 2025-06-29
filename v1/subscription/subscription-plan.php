@@ -7,6 +7,12 @@ require_once __DIR__ . '/../../models/SubscriptionTier.php';
 require_once __DIR__ . '/../../models/VendorSubscription.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
 
+// Set page title for tracking
+$pageTitle = 'Subscription Plans - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $permissionService = new PermissionService();
 
@@ -297,5 +303,6 @@ if (isset($_GET['source']) && $_GET['source'] === 'profile') {
             });
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

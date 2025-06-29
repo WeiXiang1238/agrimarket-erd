@@ -3,6 +3,12 @@ session_start();
 require_once __DIR__ . '/../../services/OrderManagementService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
 
+// Set page title for tracking
+$pageTitle = 'Order Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 // Initialize order management service
 $orderMgmtService = new OrderManagementService();
 $notificationService = new NotificationService();
@@ -1131,5 +1137,6 @@ if ($userRoles['isAdmin']) {
     });
     </script>
     <?php endif; ?>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

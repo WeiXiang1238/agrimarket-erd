@@ -22,6 +22,7 @@ class SearchLog extends BaseModel
         'user_agent',
         'session_id',
         'clicked_product_id',
+        'clicked_vendor_id',
         'search_duration',
         'click_position',
         'clicked_at'
@@ -43,6 +44,7 @@ class SearchLog extends BaseModel
         'user_agent' => 'text DEFAULT NULL',
         'session_id' => 'varchar(100) DEFAULT NULL',
         'clicked_product_id' => 'int(11) DEFAULT NULL',
+        'clicked_vendor_id' => 'int(11) DEFAULT NULL',
         'search_duration' => 'int(11) DEFAULT NULL',
         'click_position' => 'int(11) DEFAULT NULL',
         'clicked_at' => 'timestamp NULL DEFAULT NULL',
@@ -52,6 +54,7 @@ class SearchLog extends BaseModel
     // Relationships
     protected $relationships = [
         'user' => 'belongsTo:User:user_id',
-        'clicked_product' => 'belongsTo:Product:clicked_product_id'
+        'clicked_product' => 'belongsTo:Product:clicked_product_id',
+        'clicked_vendor' => 'belongsTo:Vendor:clicked_vendor_id'
     ];
 } 

@@ -65,89 +65,89 @@ if ($userRole === 'vendor') {
     }
 }
 
+// Set page title for tracking
+$pageTitle = $userRole === 'vendor' ? 'Vendor Analytics' : 'Reports & Analytics';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
     $action = $_POST['action'] ?? '';
+    $timeframe = $_POST['timeframe'] ?? '30 days';
+    $response = ['success' => false, 'data' => null];
     
     try {
         switch ($action) {
             case 'get_dashboard_analytics':
-                $analytics = $analyticsService->getDashboardAnalytics($userRole, $currentUser['user_id'], $vendorId);
-                echo json_encode(['success' => true, 'data' => $analytics]);
+                $response['data'] = $analyticsService->getDashboardAnalytics($userRole, $currentUser['user_id'], $vendorId);
+                $response['success'] = true;
                 break;
                 
             case 'get_most_searched_products':
-                $limit = (int)($_POST['limit'] ?? 10);
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $data = $analyticsService->getMostSearchedProducts($limit, $timeframe);
-                echo json_encode(['success' => true, 'data' => $data]);
+                $response['data'] = $analyticsService->getMostSearchedProducts(10, $timeframe);
+                $response['success'] = true;
                 break;
                 
             case 'get_most_searched_vendors':
-                $limit = (int)($_POST['limit'] ?? 10);
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $data = $analyticsService->getMostSearchedVendors($limit, $timeframe);
-                echo json_encode(['success' => true, 'data' => $data]);
+                if ($userRole === 'admin') {
+                    $response['data'] = $analyticsService->getMostSearchedVendors(10, $timeframe);
+                    $response['success'] = true;
+                }
                 break;
                 
             case 'get_most_searched_keywords':
-                $limit = (int)($_POST['limit'] ?? 20);
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $data = $analyticsService->getMostSearchedKeywords($limit, $timeframe);
-                echo json_encode(['success' => true, 'data' => $data]);
+                $response['data'] = $analyticsService->getMostSearchedKeywords(20, $timeframe);
+                $response['success'] = true;
                 break;
                 
             case 'get_search_trends_by_category':
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $data = $analyticsService->getSearchTrendsByCategory($timeframe);
-                echo json_encode(['success' => true, 'data' => $data]);
+                $response['data'] = $analyticsService->getSearchTrendsByCategory($timeframe);
+                $response['success'] = true;
                 break;
                 
             case 'get_most_visited_pages':
-                $limit = (int)($_POST['limit'] ?? 10);
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $data = $analyticsService->getMostVisitedProductPages($limit, $timeframe);
-                echo json_encode(['success' => true, 'data' => $data]);
+                $response['data'] = $analyticsService->getMostVisitedProductPages(10, $timeframe);
+                $response['success'] = true;
+                break;
+                
+            case 'get_most_visited_pages_general':
+                $response['data'] = $analyticsService->getMostVisitedPages(10, $timeframe);
+                $response['success'] = true;
                 break;
                 
             case 'get_most_ordered_products':
-                $limit = (int)($_POST['limit'] ?? 10);
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $data = $analyticsService->getMostOrderedProducts($limit, $timeframe);
-                echo json_encode(['success' => true, 'data' => $data]);
+                $response['data'] = $analyticsService->getMostOrderedProducts(10, $timeframe);
+                $response['success'] = true;
                 break;
                 
             case 'get_sales_report':
-                $timeframe = $_POST['timeframe'] ?? 'monthly';
-                $startDate = $_POST['start_date'] ?? null;
-                $endDate = $_POST['end_date'] ?? null;
-                $data = $analyticsService->getSalesReport($timeframe, $startDate, $endDate);
-                echo json_encode(['success' => true, 'data' => $data]);
+                $response['data'] = $analyticsService->getSalesReport($timeframe);
+                $response['success'] = true;
                 break;
                 
             case 'export_data':
                 $reportType = $_POST['report_type'] ?? '';
-                $timeframe = $_POST['timeframe'] ?? '30 days';
-                $result = $analyticsService->exportAnalyticsData($reportType, $timeframe, $userRole, $vendorId, $currentUser['user_id']);
+                $response['data'] = $analyticsService->exportAnalyticsData($reportType, $timeframe, $userRole, $vendorId, $currentUser['user_id']);
+                $response['success'] = true;
+                break;
                 
-                if ($result['success']) {
-                    header('Content-Type: text/csv');
-                    header('Content-Disposition: attachment; filename="' . $result['filename'] . '"');
-                    echo $result['content'];
-                    exit;
-                } else {
-                    echo json_encode($result);
-                }
+            case 'get_page_visit_trends_by_type':
+                $response['data'] = $analyticsService->getPageVisitTrendsByType($timeframe);
+                $response['success'] = true;
                 break;
                 
             default:
-                echo json_encode(['success' => false, 'message' => 'Invalid action']);
+                $response['error'] = 'Invalid action';
         }
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        error_log("Analytics error: " . $e->getMessage());
+        $response['error'] = 'An error occurred while processing your request.';
     }
+
+    echo json_encode($response);
     exit;
 }
 
@@ -258,6 +258,19 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                         </span>
                     </div>
                 </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon page-views">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="totalPageViews"><?php echo number_format($dashboardAnalytics['overview']['visits']['total_page_views'] ?? 0); ?></h3>
+                        <p>Page Views (30 days)</p>
+                        <span class="stat-change" id="pageViewsChange">
+                            <?php echo number_format($dashboardAnalytics['overview']['visits']['unique_pages_visited'] ?? 0); ?> unique pages
+                        </span>
+                    </div>
+                </div>
             </div>
 
             <!-- Charts Section -->
@@ -296,6 +309,18 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                         </div>
                     </div>
                     <canvas id="salesTrendsChart"></canvas>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Page Visit Trends by Type</h3>
+                        <div class="chart-controls">
+                            <button class="btn btn-sm" onclick="exportChart('page_visit_types')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <canvas id="pageVisitTypesChart"></canvas>
                 </div>
             </div>
 
@@ -379,12 +404,12 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                             <table id="searchedVendorsTable" class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Vendor</th>
+                                        <th>Vendor Name</th>
                                         <th>Email</th>
-                                        <th>Search Count</th>
+                                        <th>Total Searches</th>
                                         <th>Unique Searchers</th>
                                         <th>Product Clicks</th>
-                                        <th>Avg Results</th>
+                                        <th>Click Rate %</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -395,6 +420,146 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                     </div>
                     <?php endif; ?>
 
+                    <!-- Most Visited Pages Tab -->
+                    <div id="visited-pages" class="tab-content">
+                        <div class="report-header">
+                            <h3>Most Visited Pages</h3>
+                            <div class="report-controls">
+                                <div class="page-type-toggle">
+                                    <button class="btn btn-sm btn-outline" id="productPagesBtn" onclick="togglePageType('product')">
+                                        <i class="fas fa-box"></i> Product Pages
+                                    </button>
+                                    <button class="btn btn-sm btn-outline" id="generalPagesBtn" onclick="togglePageType('general')">
+                                        <i class="fas fa-globe"></i> All Pages
+                                    </button>
+                                </div>
+                                <select id="visitedPagesTimeframe" onchange="loadMostVisitedPages()">
+                                    <option value="7 days">Last 7 days</option>
+                                    <option value="30 days" selected>Last 30 days</option>
+                                    <option value="90 days">Last 90 days</option>
+                                    <option value="1 year">Last year</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="exportReport('most_visited_pages')">
+                                    <i class="fas fa-download"></i> Export CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div class="report-table-container">
+                            <table id="visitedPagesTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Vendor</th>
+                                        <th>Visit Count</th>
+                                        <th>Unique Visitors</th>
+                                        <th>Avg Duration</th>
+                                        <th>Bounce Rate %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Most Ordered Products Tab -->
+                    <div id="ordered-products" class="tab-content">
+                        <div class="report-header">
+                            <h3>Most Ordered Products</h3>
+                            <div class="report-controls">
+                                <select id="orderedProductsTimeframe" onchange="loadMostOrderedProducts()">
+                                    <option value="7 days">Last 7 days</option>
+                                    <option value="30 days" selected>Last 30 days</option>
+                                    <option value="90 days">Last 90 days</option>
+                                    <option value="1 year">Last year</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="exportReport('most_ordered_products')">
+                                    <i class="fas fa-download"></i> Export CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div class="report-table-container">
+                            <table id="orderedProductsTable" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Vendor</th>
+                                        <th>Order Count</th>
+                                        <th>Total Quantity</th>
+                                        <th>Total Revenue</th>
+                                        <th>Avg Price/Unit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sales Report Tab -->
+                    <div id="sales-report" class="tab-content">
+                        <div class="report-header">
+                            <h3>Sales Reports</h3>
+                            <div class="report-controls">
+                                <select id="salesReportTimeframe" onchange="loadSalesReport()">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly" selected>Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="exportReport('sales_report')">
+                                    <i class="fas fa-download"></i> Export CSV
+                                </button>
+                            </div>
+                        </div>
+                        <div class="report-table-container">
+                            <!-- PHP fallback: Sales Report Table (for debug/validation) -->
+                            <?php
+                            $salesReport = $analyticsService->getSalesReport('monthly');
+                            if (!empty($salesReport)):
+                            ?>
+                            <table class="data-table" style="margin-bottom: 20px; background: #f9f9f9;">
+                                <thead>
+                                    <tr>
+                                        <th>Period</th>
+                                        <th>Total Orders</th>
+                                        <th>Total Revenue</th>
+                                        <th>Avg Order Value</th>
+                                        <th>Unique Customers</th>
+                                        <th>Active Vendors</th>
+                                        <th>Completed Orders</th>
+                                        <th>Cancelled Orders</th>
+                                        <th>Success Rate (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($salesReport as $row): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($row['period']) ?></td>
+                                        <td><?= htmlspecialchars($row['total_orders']) ?></td>
+                                        <td><?= htmlspecialchars($row['total_revenue']) ?></td>
+                                        <td><?= htmlspecialchars($row['avg_order_value']) ?></td>
+                                        <td><?= htmlspecialchars($row['unique_customers']) ?></td>
+                                        <td><?= htmlspecialchars($row['active_vendors']) ?></td>
+                                        <td><?= htmlspecialchars($row['completed_orders']) ?></td>
+                                        <td><?= htmlspecialchars($row['cancelled_orders']) ?></td>
+                                        <td><?= htmlspecialchars($row['success_rate']) ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            <?php else: ?>
+                                <p style="color: #b00;">No sales data available (PHP fallback).</p>
+                            <?php endif; ?>
+                            <!-- End PHP fallback -->
+                        </div>
+                    </div>
+
                     <!-- More tabs would be here -->
                 </div>
             </div>
@@ -403,6 +568,7 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
     </div>
 
     <script src="script.js"></script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
     <script>
         // Initialize page data
         const userRole = '<?php echo $userRole; ?>';
@@ -415,10 +581,12 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
             if (userRole === 'admin') {
                 loadMostSearchedVendors();
             }
-            // Only load data for tabs that exist
-            if (document.getElementById('visitedPagesTable')) {
-                loadMostVisitedPages();
-            }
+            // Set default active state for page type toggle
+            document.getElementById('productPagesBtn').classList.add('active');
+            // Load visited pages data
+            loadMostVisitedPages();
+            // Load page visit trends by type
+            loadPageVisitTrendsByType();
             if (document.getElementById('orderedProductsTable')) {
                 loadMostOrderedProducts();
             }

@@ -2,6 +2,12 @@
 session_start();
 require_once __DIR__ . '/../../services/CartManagementService.php';
 
+// Set page title for tracking
+$pageTitle = 'Shopping Cart - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 // Initialize cart management service
 $cartMgmtService = new CartManagementService();
 
@@ -33,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get cart page data
 $cartPageData = $cartMgmtService->getCartPageData($customerId);
 $cartItems = $cartPageData['cartItems'] ?? [];
+error_log("Cart items value: " . var_export($cartItems, true));
+error_log("Cart items: " . print_r($cartItems, true));
 $cartSummary = $cartPageData['cartSummary'] ?? [];
 $comparisonProducts = $cartPageData['comparisonProducts'] ?? [];
 $paymentMethods = $cartPageData['paymentMethods'] ?? [];
@@ -315,5 +323,6 @@ $checkoutValidation = $cartMgmtService->isCartValidForCheckout($cartItems, $cart
     </div>
 
     <script src="script.js"></script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

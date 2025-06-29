@@ -68,14 +68,14 @@ $pageTitle = $pageTitle ?? 'Dashboard';
             $customer = $Customer->findAll(['user_id' => $currentUser['user_id']]);
             if (!empty($customer)) {
                 $customerId = $customer[0]['customer_id'];
-                $cartItems = $ShoppingCart->findAll(['customer_id' => $customerId]);
-                foreach ($cartItems as $item) {
+                $cartItem = $ShoppingCart->findAll(['customer_id' => $customerId]);
+                foreach ($cartItem as $item) {
                     $cartCount += $item['quantity'] ?? 0;
                 }
             }
         ?>
         <div class="cart-icon" style="position: relative; margin-right: 1rem;">
-            <a href="/agrimarket-erd/v1/shop/cart.php" class="cart-btn" id="cartBtn">
+            <a href="/agrimarket-erd/v1/shopping-cart/" class="cart-btn" id="cartBtn">
                 <i class="fas fa-shopping-cart"></i>
                 <?php if ($cartCount > 0): ?>
                     <span class="cart-badge"><?php echo $cartCount; ?></span>

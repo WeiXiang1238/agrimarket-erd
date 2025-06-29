@@ -139,16 +139,6 @@ function hasSidebarPermission($permission) {
             </li>
             <?php endif; ?>
             
-            <!-- Inventory Management (Vendors) -->
-            <?php if (hasSidebarPermission('manage_inventory')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/inventory/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/inventory/">
-                    <i class="fas fa-warehouse"></i>
-                    <span>Inventory</span>
-                </a>
-            </li>
-            <?php endif; ?>
-            
             <!-- Order Management / My Orders -->
             <?php if (hasSidebarPermission('manage_orders') || hasSidebarPermission('view_orders') || ($currentUser['role'] ?? '') === 'customer'): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/order-management/') !== false ? 'active' : ''; ?>">
@@ -167,25 +157,16 @@ function hasSidebarPermission($permission) {
                     <span>Shop Products</span>
                 </a>
             </li>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ?>">
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shop/') !== false && basename($_SERVER['PHP_SELF']) == 'index.php' ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/shop/" id="sidebar-shop-link">
-                    <i class="fas fa-store"></i>
-                    <span>Shop Products</span>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/vendors/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/vendors/">
+                    <i class="fas fa-store-alt"></i>
+                    <span>Find Vendors</span>
                 </a>
             </li>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/shopping-cart/') !== false ? 'active' : ''; ?>">
                 <a href="/agrimarket-erd/v1/shopping-cart/">
-            <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'cart.php' && strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/shop/cart.php" id="sidebar-cart-link">
-                    <i class="fas fa-shopping-cart"></i>
+                <i class="fas fa-shopping-cart"></i>
                     <span>Shopping Cart</span>
-                </a>
-            </li>
-            <li class="<?php echo basename($_SERVER['PHP_SELF']) == 'cart.php' && strpos($_SERVER['REQUEST_URI'], '/shop/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/shop/productcomparison.php" id="sidebar-product-comparison-link">
-                    <i class="fas fa-product-comparison"></i>
-                    <span>Product Comparison</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -216,16 +197,6 @@ function hasSidebarPermission($permission) {
                 <a href="/agrimarket-erd/v1/review-management/">
                     <i class="fas fa-star"></i>
                     <span>Review Management</span>
-                </a>
-            </li>
-            <?php endif; ?>
-            
-            <!-- Promotions (Admin) -->
-            <?php if (hasSidebarPermission('manage_promotions')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/promotions/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/promotions/">
-                    <i class="fas fa-tags"></i>
-                    <span>Promotions</span>
                 </a>
             </li>
             <?php endif; ?>

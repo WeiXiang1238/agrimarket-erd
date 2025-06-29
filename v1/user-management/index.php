@@ -7,6 +7,12 @@ require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/UserService.php';
 
+// Set page title for tracking
+$pageTitle = 'User Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $userService = new UserService();
 
@@ -843,5 +849,6 @@ $userStats = $userService->getUserStatistics();
             }
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

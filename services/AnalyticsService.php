@@ -158,7 +158,7 @@ class AnalyticsService
     }
 
     /**
-     * Get most searched vendors
+     * Get most searched vendors (includes both direct vendor searches and product-based vendor searches)
      */
     public function getMostSearchedVendors($limit = 10, $timeframe = '30 days')
     {
@@ -170,15 +170,16 @@ class AnalyticsService
                 SELECT 
                     v.vendor_id,
                     v.business_name,
-                    v.contact_email,
+                    u.email as contact_email,
                     COUNT(sl.log_id) as search_count,
                     COUNT(DISTINCT sl.user_id) as unique_searchers,
                     COUNT(sl.clicked_product_id) as product_clicks,
-                    AVG(sl.results_count) as avg_results_per_search
+                    ROUND((COUNT(sl.clicked_product_id) * 100.0 / COUNT(sl.log_id)), 2) as click_rate
                 FROM search_logs sl
-                INNER JOIN products p ON sl.clicked_product_id = p.product_id
-                INNER JOIN vendors v ON p.vendor_id = v.vendor_id
-                WHERE sl.clicked_product_id IS NOT NULL 
+                LEFT JOIN products p ON sl.clicked_product_id = p.product_id
+                LEFT JOIN vendors v ON (p.vendor_id = v.vendor_id OR sl.clicked_vendor_id = v.vendor_id)
+                LEFT JOIN users u ON v.user_id = u.user_id
+                WHERE v.vendor_id IS NOT NULL 
                 AND v.is_archive = 0 
                 AND $timeCondition
                 GROUP BY v.vendor_id
@@ -216,9 +217,10 @@ class AnalyticsService
                     COUNT(DISTINCT pv.session_id) as unique_sessions,
                     AVG(pv.visit_duration) as avg_visit_duration,
                     COUNT(CASE WHEN pv.user_id IS NOT NULL THEN 1 END) as logged_in_visits,
-                    COUNT(CASE WHEN pv.user_id IS NULL THEN 1 END) as anonymous_visits
+                    COUNT(CASE WHEN pv.user_id IS NULL THEN 1 END) as anonymous_visits,
+                    ROUND((COUNT(CASE WHEN pv.visit_duration < 10 THEN 1 END) * 100.0 / COUNT(pv.visit_id)), 2) as bounce_rate
                 FROM page_visits pv
-                INNER JOIN products p ON pv.page_url LIKE CONCAT('%product%', p.product_id, '%')
+                INNER JOIN products p ON pv.page_url LIKE '%product%'
                 LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
                 WHERE p.is_archive = 0 
                 AND $timeCondition
@@ -232,6 +234,97 @@ class AnalyticsService
             
         } catch (Exception $e) {
             error_log("Error getting most visited product pages: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get most visited pages (general page analysis)
+     */
+    public function getMostVisitedPages($limit = 10, $timeframe = '30 days')
+    {
+        try {
+            $timeCondition = $this->getTimeCondition($timeframe, 'pv.visit_date');
+            $limit = (int)$limit; // Ensure integer for security
+            
+            $stmt = $this->db->prepare("
+                SELECT 
+                    pv.page_url,
+                    pv.page_title,
+                    CASE 
+                        WHEN pv.page_url LIKE '%product%' THEN 'Product Page'
+                        WHEN pv.page_url LIKE '%shop%' THEN 'Shop Page'
+                        WHEN pv.page_url LIKE '%vendor%' THEN 'Vendor Page'
+                        WHEN pv.page_url LIKE '%cart%' THEN 'Shopping Cart'
+                        WHEN pv.page_url LIKE '%checkout%' THEN 'Checkout'
+                        WHEN pv.page_url LIKE '%dashboard%' THEN 'Dashboard'
+                        WHEN pv.page_url LIKE '%analytics%' THEN 'Analytics'
+                        WHEN pv.page_url LIKE '%profile%' THEN 'User Profile'
+                        ELSE 'Other'
+                    END as page_type,
+                    COUNT(pv.visit_id) as visit_count,
+                    COUNT(DISTINCT pv.user_id) as unique_visitors,
+                    COUNT(DISTINCT pv.session_id) as unique_sessions,
+                    AVG(pv.visit_duration) as avg_visit_duration,
+                    COUNT(CASE WHEN pv.user_id IS NOT NULL THEN 1 END) as logged_in_visits,
+                    COUNT(CASE WHEN pv.user_id IS NULL THEN 1 END) as anonymous_visits,
+                    ROUND((COUNT(CASE WHEN pv.visit_duration < 10 THEN 1 END) * 100.0 / COUNT(pv.visit_id)), 2) as bounce_rate,
+                    MAX(pv.visit_date) as last_visit,
+                    MIN(pv.visit_date) as first_visit
+                FROM page_visits pv
+                WHERE $timeCondition
+                GROUP BY pv.page_url, pv.page_title
+                ORDER BY visit_count DESC
+                LIMIT $limit
+            ");
+            
+            $stmt->execute();
+            return $stmt->fetchAll();
+            
+        } catch (Exception $e) {
+            error_log("Error getting most visited pages: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get page visit trends by page type
+     */
+    public function getPageVisitTrendsByType($timeframe = '30 days')
+    {
+        try {
+            $timeCondition = $this->getTimeCondition($timeframe, 'pv.visit_date');
+            $groupBy = $this->getGroupByFormat($timeframe);
+            
+            $stmt = $this->db->prepare("
+                SELECT 
+                    $groupBy as period,
+                    CASE 
+                        WHEN pv.page_url LIKE '%product%' THEN 'Product Pages'
+                        WHEN pv.page_url LIKE '%shop%' THEN 'Shop Pages'
+                        WHEN pv.page_url LIKE '%vendor%' THEN 'Vendor Pages'
+                        WHEN pv.page_url LIKE '%cart%' THEN 'Shopping Cart'
+                        WHEN pv.page_url LIKE '%checkout%' THEN 'Checkout'
+                        WHEN pv.page_url LIKE '%dashboard%' THEN 'Dashboard'
+                        WHEN pv.page_url LIKE '%analytics%' THEN 'Analytics'
+                        WHEN pv.page_url LIKE '%profile%' THEN 'User Profile'
+                        ELSE 'Other Pages'
+                    END as page_type,
+                    COUNT(pv.visit_id) as visit_count,
+                    COUNT(DISTINCT pv.user_id) as unique_visitors,
+                    COUNT(DISTINCT pv.session_id) as unique_sessions,
+                    AVG(pv.visit_duration) as avg_visit_duration
+                FROM page_visits pv
+                WHERE $timeCondition
+                GROUP BY $groupBy, page_type
+                ORDER BY period DESC, visit_count DESC
+            ");
+            
+            $stmt->execute();
+            return $stmt->fetchAll();
+            
+        } catch (Exception $e) {
+            error_log("Error getting page visit trends by type: " . $e->getMessage());
             return [];
         }
     }
@@ -254,10 +347,10 @@ class AnalyticsService
                     v.business_name as vendor_name,
                     COUNT(oi.order_item_id) as order_count,
                     SUM(oi.quantity) as total_quantity_sold,
-                    SUM(oi.price * oi.quantity) as total_revenue,
+                    SUM(oi.price_at_purchase * oi.quantity) as total_revenue,
                     COUNT(DISTINCT o.customer_id) as unique_customers,
                     AVG(oi.quantity) as avg_quantity_per_order,
-                    AVG(oi.price) as avg_price_per_unit
+                    AVG(oi.price_at_purchase) as avg_price_per_unit
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.order_id
                 INNER JOIN products p ON oi.product_id = p.product_id
@@ -266,7 +359,7 @@ class AnalyticsService
                 AND p.is_archive = 0 
                 AND o.status != 'Cancelled'
                 AND $timeCondition
-                GROUP BY p.product_id
+                GROUP BY p.product_id, p.name, p.category, p.selling_price, v.business_name
                 ORDER BY total_quantity_sold DESC
                 LIMIT $limit
             ");
@@ -296,6 +389,7 @@ class AnalyticsService
             } else {
                 $dateCondition = $this->getTimeCondition($this->getDefaultTimeRange($timeframe), 'o.order_date');
             }
+            $dateCondition = '';
             
             $stmt = $this->db->prepare("
                 SELECT 
@@ -492,7 +586,9 @@ class AnalyticsService
                     COUNT(DISTINCT user_id) as unique_visitors,
                     COUNT(DISTINCT session_id) as unique_sessions,
                     AVG(visit_duration) as avg_duration,
-                    COUNT(CASE WHEN visit_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as visits_this_week
+                    COUNT(CASE WHEN visit_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as visits_this_week,
+                    COUNT(DISTINCT page_url) as unique_pages_visited,
+                    COUNT(*) as total_page_views
                 FROM page_visits pv
                 WHERE visit_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
                 " . ($vendorCondition ? "AND page_url LIKE '%product%' AND EXISTS (SELECT 1 FROM products p WHERE pv.page_url LIKE CONCAT('%', p.product_id, '%') AND p.is_archive = 0 $vendorCondition)" : "")
@@ -530,7 +626,7 @@ class AnalyticsService
         } catch (Exception $e) {
             return [
                 'searches' => ['total_searches' => 0, 'unique_searchers' => 0, 'total_clicks' => 0, 'searches_this_week' => 0],
-                'visits' => ['total_visits' => 0, 'unique_visitors' => 0, 'unique_sessions' => 0, 'avg_duration' => 0, 'visits_this_week' => 0],
+                'visits' => ['total_visits' => 0, 'unique_visitors' => 0, 'unique_sessions' => 0, 'avg_duration' => 0, 'visits_this_week' => 0, 'unique_pages_visited' => 0, 'total_page_views' => 0],
                 'orders' => ['total_orders' => 0, 'total_revenue' => 0, 'avg_order_value' => 0, 'unique_customers' => 0, 'orders_this_week' => 0]
             ];
         }
@@ -746,7 +842,7 @@ class AnalyticsService
                     $filename = 'most_searched_products_' . str_replace(' ', '_', $timeframe);
                     break;
                 case 'most_visited_pages':
-                    $data = $this->getMostVisitedProductPages(100, $timeframe);
+                    $data = $this->getMostVisitedPages(100, $timeframe);
                     $filename = 'most_visited_pages_' . str_replace(' ', '_', $timeframe);
                     break;
                 case 'most_ordered_products':

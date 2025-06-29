@@ -26,6 +26,12 @@ $authService->requireAuth('/agrimarket-erd/v1/auth/login/');
 $currentUser = $authService->getCurrentUser();
 $csrfToken = $authService->generateCSRFToken();
 
+// Set page title for tracking
+$pageTitle = getDashboardTitle($currentUser);
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 // Get user permissions using PermissionService
 $userPermissions = [];
 if ($currentUser) {
@@ -1300,5 +1306,6 @@ function getLatestProductTime($currentUser) {
         }
         
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

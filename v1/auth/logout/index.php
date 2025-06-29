@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/../../../services/AuthService.php';
 
+// Set page title for tracking
+$pageTitle = 'Logout - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../../includes/page_tracking.php';
+
 $authService = new AuthService();
 
 // Handle logout

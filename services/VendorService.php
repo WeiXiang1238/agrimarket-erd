@@ -597,6 +597,45 @@ class VendorService
     }
     
     /**
+     * Get vendor by ID (for products page filtering)
+     */
+    public function getVendorById($vendorId)
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT 
+                    v.vendor_id, v.business_name, v.contact_number, v.address,
+                    v.website_url, v.description, v.subscription_tier_id,
+                    u.name as contact_name, u.email as user_email,
+                    st.name as subscription_tier
+                FROM vendors v
+                JOIN users u ON v.user_id = u.user_id
+                LEFT JOIN subscription_tiers st ON v.subscription_tier_id = st.tier_id
+                WHERE v.vendor_id = ? AND v.is_archive = 0
+            ");
+            $stmt->execute([$vendorId]);
+            $vendor = $stmt->fetch();
+            
+            if ($vendor) {
+                return [
+                    'success' => true,
+                    'vendor' => $vendor
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Vendor not found'
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error fetching vendor: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
      * Get available users for vendor creation (users without vendor profiles)
      */
     public function getAvailableUsers()

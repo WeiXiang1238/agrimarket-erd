@@ -9,6 +9,12 @@ require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/ProductService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
 
+// Set page title for tracking
+$pageTitle = 'Product Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $productService = new ProductService();
 $notificationService = new NotificationService();
@@ -1455,5 +1461,6 @@ try {
             }
         }
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

@@ -1,14 +1,16 @@
 // Analytics Dashboard JavaScript
 
 // Global variables
-let searchTrendsChart, pageVisitTrendsChart, salesTrendsChart;
+let searchTrendsChart, pageVisitTrendsChart, salesTrendsChart, pageVisitTypesChart;
 let currentTimeframe = '30 days';
+let currentPageType = 'product'; // 'product' or 'general'
 
 // Initialize charts
 function initializeCharts() {
     initializeSearchTrendsChart();
     initializePageVisitTrendsChart();
     initializeSalesTrendsChart();
+    initializePageVisitTypesChart();
 }
 
 // Tab switching functionality
@@ -191,11 +193,64 @@ function initializeSalesTrendsChart() {
     });
 }
 
+// Initialize Page Visit Types Chart
+function initializePageVisitTypesChart() {
+    const ctx = document.getElementById('pageVisitTypesChart');
+    if (!ctx) return;
+
+    pageVisitTypesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Page Visits',
+                data: [],
+                backgroundColor: [
+                    '#3b82f6',
+                    '#10b981',
+                    '#f59e0b',
+                    '#ef4444',
+                    '#8b5cf6',
+                    '#06b6d4',
+                    '#6b7280'
+                ],
+                borderColor: [
+                    '#2563eb',
+                    '#059669',
+                    '#d97706',
+                    '#dc2626',
+                    '#7c3aed',
+                    '#0891b2',
+                    '#4b5563'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
 // Update all charts
 function updateCharts() {
     // In a real implementation, you would fetch trend data and update charts
     // For now, we'll just log that charts should be updated
     console.log('Charts updated for timeframe:', currentTimeframe);
+
+    // Update page visit types chart
+    loadPageVisitTrendsByType();
 }
 
 // Load Most Searched Products
@@ -238,8 +293,8 @@ function loadMostSearchedVendors() {
         .then(data => {
             if (data.success) {
                 populateTable('searchedVendorsTable', data.data, [
-                    'vendor_name', 'email', 'search_count', 'unique_searchers',
-                    'product_clicks', 'avg_results'
+                    'business_name', 'contact_email', 'search_count', 'unique_searchers',
+                    'product_clicks', 'click_rate'
                 ]);
             }
         })
@@ -262,10 +317,7 @@ function loadMostVisitedPages() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                populateTable('visitedPagesTable', data.data, [
-                    'product_name', 'category_name', 'price', 'vendor_name',
-                    'visit_count', 'unique_visitors', 'avg_duration', 'logged_in_visits'
-                ]);
+                populateVisitedPagesTable('visitedPagesTable', data.data);
             }
         })
         .catch(error => {
@@ -273,28 +325,205 @@ function loadMostVisitedPages() {
         });
 }
 
-// Load Most Ordered Products
-function loadMostOrderedProducts() {
-    const timeframe = document.getElementById('orderedProductsTimeframe')?.value || currentTimeframe;
+// Load General Most Visited Pages
+function loadGeneralMostVisitedPages() {
+    const timeframe = document.getElementById('visitedPagesTimeframe')?.value || currentTimeframe;
 
     fetch('', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `action=get_most_ordered_products&timeframe=${encodeURIComponent(timeframe)}&limit=10`
+        body: `action=get_most_visited_pages_general&timeframe=${encodeURIComponent(timeframe)}&limit=10`
     })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                populateTable('orderedProductsTable', data.data, [
-                    'product_name', 'category_name', 'price', 'vendor_name',
-                    'order_count', 'quantity_sold', 'revenue', 'unique_customers'
-                ]);
+                populateGeneralVisitedPagesTable('visitedPagesTable', data.data);
             }
         })
         .catch(error => {
-            console.error('Error loading ordered products:', error);
+            console.error('Error loading general visited pages:', error);
+        });
+}
+
+// Populate visited pages table with product-specific data
+function populateVisitedPagesTable(tableId, data) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    // Clear existing data
+    tbody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No data available</td></tr>';
+        return;
+    }
+
+    // Populate rows
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Page/Product
+        const td1 = document.createElement('td');
+        td1.innerHTML = `<strong>${row.product_name || 'N/A'}</strong>`;
+        tr.appendChild(td1);
+
+        // Category
+        const td2 = document.createElement('td');
+        td2.textContent = row.category || 'N/A';
+        tr.appendChild(td2);
+
+        // Vendor
+        const td3 = document.createElement('td');
+        td3.textContent = row.vendor_name || 'N/A';
+        tr.appendChild(td3);
+
+        // Visit Count
+        const td4 = document.createElement('td');
+        td4.innerHTML = `<span class="badge badge-primary">${parseInt(row.visit_count).toLocaleString()}</span>`;
+        tr.appendChild(td4);
+
+        // Unique Visitors
+        const td5 = document.createElement('td');
+        td5.textContent = parseInt(row.unique_visitors).toLocaleString();
+        tr.appendChild(td5);
+
+        // Avg Duration
+        const td6 = document.createElement('td');
+        td6.textContent = formatDuration(row.avg_visit_duration);
+        tr.appendChild(td6);
+
+        // Logged In Visits
+        const td7 = document.createElement('td');
+        td7.innerHTML = `<span class="badge badge-success">${parseInt(row.logged_in_visits).toLocaleString()}</span>`;
+        tr.appendChild(td7);
+
+        // Anonymous Visits
+        const td8 = document.createElement('td');
+        td8.innerHTML = `<span class="badge badge-warning">${parseInt(row.anonymous_visits).toLocaleString()}</span>`;
+        tr.appendChild(td8);
+
+        // Bounce Rate
+        const td9 = document.createElement('td');
+        const bounceRate = parseFloat(row.bounce_rate || 0);
+        const bounceClass = bounceRate > 70 ? 'badge-danger' : bounceRate > 50 ? 'badge-warning' : 'badge-success';
+        td9.innerHTML = `<span class="badge ${bounceClass}">${bounceRate.toFixed(1)}%</span>`;
+        tr.appendChild(td9);
+
+        tbody.appendChild(tr);
+    });
+}
+
+// Populate general visited pages table
+function populateGeneralVisitedPagesTable(tableId, data) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    // Clear existing data
+    tbody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No data available</td></tr>';
+        return;
+    }
+
+    // Populate rows
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Page/Product
+        const td1 = document.createElement('td');
+        td1.innerHTML = `<strong>${row.page_title || row.page_url || 'N/A'}</strong><br><small class="text-muted">${row.page_type}</small>`;
+        tr.appendChild(td1);
+
+        // Category (Page Type)
+        const td2 = document.createElement('td');
+        td2.innerHTML = `<span class="badge badge-info">${row.page_type}</span>`;
+        tr.appendChild(td2);
+
+        // Vendor (N/A for general pages)
+        const td3 = document.createElement('td');
+        td3.textContent = 'N/A';
+        tr.appendChild(td3);
+
+        // Visit Count
+        const td4 = document.createElement('td');
+        td4.innerHTML = `<span class="badge badge-primary">${parseInt(row.visit_count).toLocaleString()}</span>`;
+        tr.appendChild(td4);
+
+        // Unique Visitors
+        const td5 = document.createElement('td');
+        td5.textContent = parseInt(row.unique_visitors).toLocaleString();
+        tr.appendChild(td5);
+
+        // Avg Duration
+        const td6 = document.createElement('td');
+        td6.textContent = formatDuration(row.avg_visit_duration);
+        tr.appendChild(td6);
+
+        // Logged In Visits
+        const td7 = document.createElement('td');
+        td7.innerHTML = `<span class="badge badge-success">${parseInt(row.logged_in_visits).toLocaleString()}</span>`;
+        tr.appendChild(td7);
+
+        // Anonymous Visits
+        const td8 = document.createElement('td');
+        td8.innerHTML = `<span class="badge badge-warning">${parseInt(row.anonymous_visits).toLocaleString()}</span>`;
+        tr.appendChild(td8);
+
+        // Bounce Rate
+        const td9 = document.createElement('td');
+        const bounceRate = parseFloat(row.bounce_rate || 0);
+        const bounceClass = bounceRate > 70 ? 'badge-danger' : bounceRate > 50 ? 'badge-warning' : 'badge-success';
+        td9.innerHTML = `<span class="badge ${bounceClass}">${bounceRate.toFixed(1)}%</span>`;
+        tr.appendChild(td9);
+
+        tbody.appendChild(tr);
+    });
+}
+
+// Load Most Ordered Products
+function loadMostOrderedProducts() {
+    const timeframe = document.getElementById('orderedProductsTimeframe').value;
+    const tableBody = document.querySelector('#orderedProductsTable tbody');
+
+    // Show loading state
+    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Loading...</td></tr>';
+
+    fetch('', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_most_ordered_products&timeframe=${timeframe}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const columns = [
+                    { key: 'product_name', format: (val) => val },
+                    { key: 'category', format: (val) => val },
+                    { key: 'vendor_name', format: (val) => val || 'N/A' },
+                    { key: 'order_count', format: (val) => formatNumber(val) },
+                    { key: 'total_quantity_sold', format: (val) => formatNumber(val) },
+                    { key: 'total_revenue', format: (val) => formatCurrency(val) },
+                    { key: 'avg_price_per_unit', format: (val) => formatCurrency(val) }
+                ];
+                populateTable('orderedProductsTable', data.data, columns);
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No data available</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading most ordered products:', error);
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading data</td></tr>';
         });
 }
 
@@ -344,15 +573,11 @@ function populateTable(tableId, data, columns) {
         const tr = document.createElement('tr');
         columns.forEach(column => {
             const td = document.createElement('td');
-            let value = row[column] || '';
+            let value = row[column.key] || '';
 
             // Format specific columns
-            if (column.includes('price') || column.includes('revenue')) {
-                value = '$' + parseFloat(value).toLocaleString();
-            } else if (column.includes('ctr') || column.includes('success_rate')) {
-                value = parseFloat(value).toFixed(2) + '%';
-            } else if (column.includes('duration')) {
-                value = formatDuration(value);
+            if (column.format) {
+                value = column.format(value);
             }
 
             td.textContent = value;
@@ -425,6 +650,9 @@ function exportChart(chartType) {
         case 'sales_trends':
             chart = salesTrendsChart;
             break;
+        case 'page_visit_types':
+            chart = pageVisitTypesChart;
+            break;
     }
 
     if (chart) {
@@ -455,6 +683,18 @@ function updateDashboardStats(data) {
                 parseInt(stats.visits.total_visits || 0).toLocaleString();
             document.getElementById('visitsChange').textContent =
                 `${parseInt(stats.visits.visits_this_week || 0).toLocaleString()} this week`;
+        }
+
+        // Update page views
+        if (stats.visits) {
+            const pageViewsElement = document.getElementById('totalPageViews');
+            const pageViewsChangeElement = document.getElementById('pageViewsChange');
+            if (pageViewsElement) {
+                pageViewsElement.textContent = parseInt(stats.visits.total_page_views || 0).toLocaleString();
+            }
+            if (pageViewsChangeElement) {
+                pageViewsChangeElement.textContent = `${parseInt(stats.visits.unique_pages_visited || 0).toLocaleString()} unique pages`;
+            }
         }
 
         // Update orders
@@ -493,4 +733,68 @@ function formatCurrency(amount) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
+}
+
+// Toggle between product pages and general pages
+function togglePageType(type) {
+    currentPageType = type;
+
+    // Update button states
+    document.getElementById('productPagesBtn').classList.toggle('active', type === 'product');
+    document.getElementById('generalPagesBtn').classList.toggle('active', type === 'general');
+
+    // Load appropriate data
+    if (type === 'product') {
+        loadMostVisitedPages();
+    } else {
+        loadGeneralMostVisitedPages();
+    }
+}
+
+// Load Page Visit Trends by Type
+function loadPageVisitTrendsByType() {
+    const timeframe = currentTimeframe;
+
+    fetch('', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=get_page_visit_trends_by_type&timeframe=${encodeURIComponent(timeframe)}`
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && pageVisitTypesChart) {
+                updatePageVisitTypesChart(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading page visit trends by type:', error);
+        });
+}
+
+// Update Page Visit Types Chart
+function updatePageVisitTypesChart(data) {
+    if (!pageVisitTypesChart || !data) return;
+
+    // Group data by page type and sum visits
+    const pageTypeData = {};
+    data.forEach(item => {
+        if (!pageTypeData[item.page_type]) {
+            pageTypeData[item.page_type] = 0;
+        }
+        pageTypeData[item.page_type] += parseInt(item.visit_count || 0);
+    });
+
+    // Sort by visit count
+    const sortedData = Object.entries(pageTypeData)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 7); // Top 7 page types
+
+    const labels = sortedData.map(([type]) => type);
+    const visitCounts = sortedData.map(([, count]) => count);
+
+    pageVisitTypesChart.data.labels = labels;
+    pageVisitTypesChart.data.datasets[0].data = visitCounts;
+    pageVisitTypesChart.update();
 } 

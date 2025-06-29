@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../../../services/UserService.php';
 require_once __DIR__ . '/../../../services/AuthService.php';
 
+// Set page title for tracking
+$pageTitle = 'Forgot Password - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../../includes/page_tracking.php';
+
 $userService = new UserService();
 $authService = new AuthService();
 
@@ -191,5 +197,6 @@ $csrfToken = $authService->generateCSRFToken();
             }
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 

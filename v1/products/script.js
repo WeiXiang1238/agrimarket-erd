@@ -56,6 +56,7 @@ function searchProducts(page = 1) {
 
     const searchTerm = document.getElementById('searchInput').value;
     const categoryId = document.getElementById('categoryFilter').value;
+    const vendorId = document.getElementById('vendorFilter') ? document.getElementById('vendorFilter').value : '';
 
     const formData = new FormData();
     formData.append('action', 'get_products');
@@ -63,6 +64,7 @@ function searchProducts(page = 1) {
     formData.append('limit', 12);
     formData.append('search', searchTerm);
     formData.append('category_id', categoryId);
+    formData.append('vendor_id', vendorId);
 
     // Show loading state
     const productsGrid = document.getElementById('productsGrid');
@@ -80,7 +82,7 @@ function searchProducts(page = 1) {
 
                 displayProducts(data.products, searchTerm);
                 updatePagination(data.page, data.totalPages);
-                updateURL(searchTerm, categoryId, page);
+                updateURL(searchTerm, categoryId, vendorId, page);
             } else {
                 showNotification('Failed to load products: ' + (data.message || 'Unknown error'), 'error');
                 productsGrid.innerHTML = '<div class="no-products"><h3>Error loading products</h3><p>Please try again later.</p></div>';
@@ -116,7 +118,7 @@ function displayProducts(products, searchTerm = '') {
     const productsHTML = products.map((product, index) => `
         <div class="product-card" data-product-id="${product.product_id}">
             <div class="product-image">
-                <img src="../..${product.image_path || '/uploads/products/default-product.jpg'}" 
+                <img src="../../${product.image_path || 'uploads/products/default-product.jpg'}" 
                      alt="${escapeHtml(product.name)}"
                      onerror="this.src='../../uploads/products/default-product.jpg'">
                 
@@ -188,7 +190,7 @@ function updatePagination(currentPage, totalPages) {
 }
 
 // Update URL without page reload
-function updateURL(search, categoryId, page) {
+function updateURL(search, categoryId, vendorId, page) {
     const url = new URL(window.location);
 
     if (search) {
@@ -201,6 +203,12 @@ function updateURL(search, categoryId, page) {
         url.searchParams.set('category_id', categoryId);
     } else {
         url.searchParams.delete('category_id');
+    }
+
+    if (vendorId) {
+        url.searchParams.set('vendor_id', vendorId);
+    } else {
+        url.searchParams.delete('vendor_id');
     }
 
     if (page > 1) {
@@ -216,7 +224,15 @@ function updateURL(search, categoryId, page) {
 function clearFilters() {
     document.getElementById('searchInput').value = '';
     document.getElementById('categoryFilter').value = '';
-    searchProducts(1);
+
+    // Don't clear vendor filter if it exists - use clearVendorFilter() instead
+    const vendorFilter = document.getElementById('vendorFilter');
+    if (vendorFilter) {
+        // Keep vendor filter, just clear other filters
+        searchProducts(1);
+    } else {
+        searchProducts(1);
+    }
 }
 
 // Quick add to cart (quantity = 1) - now with stock validation
@@ -476,7 +492,7 @@ function displayProductDetailsModal(product) {
     const modalContent = `
         <div class="product-details">
             <div class="product-details-image">
-                <img src="../..${product.image_path || '/uploads/products/default-product.jpg'}" 
+                <img src="../../${product.image_path || 'uploads/products/default-product.jpg'}" 
                      alt="${escapeHtml(product.name)}"
                      onerror="this.src='../../uploads/products/default-product.jpg'">
             </div>

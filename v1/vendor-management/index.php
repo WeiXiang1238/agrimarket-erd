@@ -7,6 +7,12 @@ require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/VendorService.php';
 
+// Set page title for tracking
+$pageTitle = 'Vendor Management - AgriMarket Solutions';
+
+// Include page tracking
+require_once __DIR__ . '/../../includes/page_tracking.php';
+
 $authService = new AuthService();
 $vendorService = new VendorService();
 
@@ -1026,5 +1032,6 @@ $verificationStatuses = $vendorService->getVerificationStatuses();
             }
         });
     </script>
+    <script src="/agrimarket-erd/v1/components/page_tracking.js"></script>
 </body>
 </html> 
