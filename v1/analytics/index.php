@@ -273,57 +273,6 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                 </div>
             </div>
 
-            <!-- Charts Section -->
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>Search Trends</h3>
-                        <div class="chart-controls">
-                            <button class="btn btn-sm" onclick="exportChart('search_trends')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <canvas id="searchTrendsChart"></canvas>
-                </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>Page Visit Trends</h3>
-                        <div class="chart-controls">
-                            <button class="btn btn-sm" onclick="exportChart('page_visits')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <canvas id="pageVisitTrendsChart"></canvas>
-                </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>Sales Trends</h3>
-                        <div class="chart-controls">
-                            <button class="btn btn-sm" onclick="exportChart('sales_trends')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <canvas id="salesTrendsChart"></canvas>
-                </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h3>Page Visit Trends by Type</h3>
-                        <div class="chart-controls">
-                            <button class="btn btn-sm" onclick="exportChart('page_visit_types')">
-                                <i class="fas fa-download"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <canvas id="pageVisitTypesChart"></canvas>
-                </div>
-            </div>
-
             <!-- Reports Tabs -->
             <div class="reports-section">
                 <div class="tabs-container">
