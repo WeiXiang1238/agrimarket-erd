@@ -5,20 +5,16 @@ date_default_timezone_set('Asia/Kuala_Lumpur');
 require_once __DIR__ . '/../../Db_Connect.php';
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/PermissionService.php';
-require_once __DIR__ . '/../../models/Product.php';
-require_once __DIR__ . '/../../models/Vendor.php';
-require_once __DIR__ . '/../../models/Order.php';
-require_once __DIR__ . '/../../models/SubscriptionTier.php';
-require_once __DIR__ . '/../../models/VendorSubscription.php';
+require_once __DIR__ . '/../../services/DashboardService.php';
 require_once __DIR__ . '/../../services/NotificationService.php';
-require_once __DIR__ . '/../../models/Staff.php';
-require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../services/StaffService.php';
+require_once __DIR__ . '/../../models/Staff.php';
 require_once __DIR__ . '/../../models/StaffTask.php';
 
 $authService = new AuthService();
 $permissionService = new PermissionService();
 $notificationService = new NotificationService();
+$dashboardService = new DashboardService();
 
 // Require authentication (any authenticated user can access)
 $authService->requireAuth('/agrimarket-erd/v1/auth/login/');
@@ -26,8 +22,8 @@ $authService->requireAuth('/agrimarket-erd/v1/auth/login/');
 $currentUser = $authService->getCurrentUser();
 $csrfToken = $authService->generateCSRFToken();
 
-// Set page title for tracking
-$pageTitle = getDashboardTitle($currentUser);
+// Set page title for tracking using DashboardService
+$pageTitle = $dashboardService->getDashboardTitle($currentUser);
 
 // Include page tracking
 require_once __DIR__ . '/../../includes/page_tracking.php';
@@ -55,353 +51,9 @@ function hasPermission($permission) {
     return isset($userPermissions[$permission]);
 }
 
-// Function to get product count for current user
-function getProductCount($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Base query for all products
-        $baseQuery = "
-            SELECT COUNT(*) as product_count
-            FROM products
-            WHERE is_archive = 0
-        ";
-        
-        // If user has manage_products permission (admin), return total count
-        if (hasPermission('manage_products')) {
-            $stmt = $db->prepare($baseQuery);
-            $stmt->execute();
-            return $stmt->fetch()['product_count'] ?? 0;
-        }
-        
-        // If user is a vendor, get their vendor_id and count their products
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare($baseQuery . " AND vendor_id = ?");
-                $stmt->execute([$vendorId]);
-                return $stmt->fetch()['product_count'] ?? 0;
-            }
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting product count: ' . $e->getMessage());
-        return 0;
-    }
-}
+// All dashboard functions moved to DashboardService for better separation of concerns
 
-// Function to get product count change percentage
-function getProductCountChange($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Base query for last month's products
-        $baseQuery = "
-            SELECT COUNT(*) as product_count
-            FROM products
-            WHERE is_archive = 0
-            AND created_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH) ,'%Y-%m-01')
-            AND created_at < DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ";
-        
-        // Base query for this month's products
-        $thisMonthQuery = "
-            SELECT COUNT(*) as product_count
-            FROM products
-            WHERE is_archive = 0
-            AND created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ";
-        
-        $whereClause = "";
-        $params = [];
-        
-        // Add role-specific conditions
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            if (!empty($vendor)) {
-                $whereClause = " AND vendor_id = ?";
-                $params[] = $vendor[0]['vendor_id'];
-            }
-        } elseif (!hasPermission('manage_products')) {
-            return 0;
-        }
-        
-        // Get last month's count
-        $stmt = $db->prepare($baseQuery . $whereClause);
-        $stmt->execute($params);
-        $lastMonthCount = $stmt->fetch()['product_count'];
-        
-        // Get this month's count
-        $stmt = $db->prepare($thisMonthQuery . $whereClause);
-        $stmt->execute($params);
-        $thisMonthCount = $stmt->fetch()['product_count'];
-        
-        if ($lastMonthCount > 0) {
-            $percentChange = (($thisMonthCount - $lastMonthCount) / $lastMonthCount) * 100;
-            return round($percentChange);
-        } else if ($thisMonthCount > 0) {
-            return 100; // If last month was 0 and this month has products, return 100%
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting product count change: ' . $e->getMessage());
-        return 0;
-    }
-}
 
-// Function to get order count for current user
-function getOrderCount($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Base query for today's orders
-        $baseQuery = "
-            SELECT COUNT(*) as order_count
-            FROM orders
-            WHERE is_archive = 0
-            AND DATE(order_date) = CURDATE()
-        ";
-        
-        // If user has manage_orders permission (admin), return total count
-        if (hasPermission('manage_orders')) {
-            $stmt = $db->prepare($baseQuery);
-            $stmt->execute();
-            return $stmt->fetch()['order_count'] ?? 0;
-        }
-        
-        // If user is a vendor, get their vendor_id and count their orders
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare($baseQuery . " AND vendor_id = ?");
-                $stmt->execute([$vendorId]);
-                return $stmt->fetch()['order_count'] ?? 0;
-            }
-        }
-        
-        // If user is a customer, count their orders
-        if ($currentUser['role'] == 'customer') {
-            $stmt = $db->prepare($baseQuery . " AND customer_id = ?");
-            $stmt->execute([$currentUser['user_id']]);
-            return $stmt->fetch()['order_count'] ?? 0;
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting order count: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get total order count for current user
-function getTotalOrderCount($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Base query for all orders
-        $baseQuery = "
-            SELECT COUNT(*) as order_count
-            FROM orders
-            WHERE is_archive = 0
-        ";
-        
-        // If user has manage_orders permission (admin), return total count
-        if (hasPermission('manage_orders')) {
-            $stmt = $db->prepare($baseQuery);
-            $stmt->execute();
-            return $stmt->fetch()['order_count'] ?? 0;
-        }
-        
-        // If user is a vendor, get their vendor_id and count their orders
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare($baseQuery . " AND vendor_id = ?");
-                $stmt->execute([$vendorId]);
-                return $stmt->fetch()['order_count'] ?? 0;
-            }
-        }
-        
-        // If user is a customer, count their orders
-        if ($currentUser['role'] == 'customer') {
-            $stmt = $db->prepare($baseQuery . " AND customer_id = ?");
-            $stmt->execute([$currentUser['user_id']]);
-            return $stmt->fetch()['order_count'] ?? 0;
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting total order count: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get report count for current user
-function getReportCount($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // If user has view_analytics permission (admin), get total analytics reports
-        if (hasPermission('view_analytics')) {
-            $stmt = $db->prepare("
-                SELECT COUNT(DISTINCT report_type) as report_count
-                FROM analytics_reports
-                WHERE is_archive = 0
-            ");
-            $stmt->execute();
-            return $stmt->fetch()['report_count'] ?? 0;
-        }
-        
-        // If user has view_reports permission (vendor), get vendor-specific reports
-        if (hasPermission('view_reports')) {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare("
-                    SELECT COUNT(DISTINCT report_type) as report_count
-                    FROM vendor_reports
-                    WHERE vendor_id = ?
-                    AND is_archive = 0
-                ");
-                $stmt->execute([$vendorId]);
-                return $stmt->fetch()['report_count'] ?? 0;
-            }
-        }
-        
-        // For customers, get their available reports
-        if ($currentUser['role'] == 'customer') {
-            $stmt = $db->prepare("
-                SELECT COUNT(DISTINCT report_type) as report_count
-                FROM customer_reports
-                WHERE is_archive = 0
-                AND is_public = 1
-            ");
-            $stmt->execute();
-            return $stmt->fetch()['report_count'] ?? 0;
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting report count: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get vendor subscription details
-function getVendorSubscriptionDetails($currentUser) {
-    if (!$currentUser || $currentUser['role'] !== 'vendor') {
-        return null;
-    }
-    
-    $vendorModel = new Vendor();
-    $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-    
-    if (empty($vendor)) {
-        return null;
-    }
-    
-    $vendorId = $vendor[0]['vendor_id'];
-    $subscriptionTierId = $vendor[0]['subscription_tier_id'] ?? $vendor[0]['tier_id'];
-    
-    // Get subscription tier details
-    $subscriptionTierModel = new SubscriptionTier();
-    $subscriptionTier = $subscriptionTierModel->find($subscriptionTierId);
-    
-    if (!$subscriptionTier) {
-        return null;
-    }
-    
-    // Get active subscription details
-    $vendorSubscriptionModel = new VendorSubscription();
-    $activeSubscription = $vendorSubscriptionModel->findAll([
-        'vendor_id' => $vendorId,
-        'is_active' => 1
-    ]);
-    
-    $subscriptionDetails = [
-        'tier_name' => $subscriptionTier['name'],
-        'description' => $subscriptionTier['description'],
-        'monthly_fee' => $subscriptionTier['monthly_fee'],
-        'due_date' => null,
-        'is_active' => false
-    ];
-    
-    if (!empty($activeSubscription)) {
-        $subscriptionDetails['due_date'] = $activeSubscription[0]['end_date'];
-        $subscriptionDetails['is_active'] = true;
-    }
-    
-    return $subscriptionDetails;
-}
-
-// Function to get subscription tier background color
-function getSubscriptionTierColor($tierName) {
-    $tierName = strtolower(trim($tierName));
-    
-    switch ($tierName) {
-        case 'bronze':
-            return 'linear-gradient(135deg, #cd7f32, #b8860b)'; // Bronze color
-        case 'silver':
-            return 'linear-gradient(135deg, #c0c0c0, #a8a8a8)'; // Silver color
-        case 'gold':
-            return 'linear-gradient(135deg, #ffd700, #ffb347)'; // Gold color
-        case 'platinum':
-            return 'linear-gradient(135deg, #667eea, #764ba2)'; // Fantasy purple gradient
-        default:
-            return 'linear-gradient(135deg,rgb(108, 126, 120),rgb(29, 88, 70))'; // Green (default)
-    }
-}
-
-// Get dashboard title based on user role
-function getDashboardTitle($user) {
-    $role = $user['role'] ?? 'customer';
-    switch ($role) {
-        case 'admin': return 'Admin Dashboard';
-        case 'vendor': return 'Vendor Dashboard';
-        case 'staff': return 'Staff Dashboard';
-        case 'customer': return 'Customer Dashboard';
-        default: return 'Dashboard';
-    }
-}
 
 // Handle task completion POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) {
@@ -417,848 +69,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['complete_task_id'])) 
     exit;
 }
 
-// Function to get revenue amount for current user
-function getRevenueAmount($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Base query for revenue calculation
-        $baseQuery = "
-            SELECT COALESCE(SUM(total_amount), 0) as total_revenue
-            FROM orders 
-            WHERE is_archive = 0 
-            AND status = 'completed'
-            AND order_date >= DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ";
-        
-        // If user has view_analytics permission (admin), return total platform revenue
-        if (hasPermission('view_analytics')) {
-            $stmt = $db->prepare($baseQuery);
-            $stmt->execute();
-            return $stmt->fetch()['total_revenue'] ?? 0;
-        }
-        
-        // If user is a vendor, get their revenue
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare($baseQuery . " AND vendor_id = ?");
-                $stmt->execute([$vendorId]);
-                return $stmt->fetch()['total_revenue'] ?? 0;
-            }
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting revenue amount: ' . $e->getMessage());
-        return 0;
-    }
-}
 
-// Function to get latest order information for current user
-function getLatestOrderInfo($currentUser) {
-    if (!$currentUser) return 'No orders today';
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // If user has view_analytics permission (admin), get latest platform order
-        if (hasPermission('view_analytics')) {
-            $stmt = $db->prepare("
-                SELECT order_id, status, order_date
-                FROM orders 
-                WHERE is_archive = 0 
-                AND order_date >= CURDATE()
-                ORDER BY order_date DESC
-                LIMIT 1
-            ");
-            $stmt->execute();
-            $latestOrder = $stmt->fetch();
-            
-            if ($latestOrder) {
-                $timeAgo = getTimeAgo($latestOrder['order_date']);
-                return "Order #{$latestOrder['order_id']} - {$timeAgo}";
-            }
-            return 'No orders today';
-        }
-        
-        // If user is a vendor, get their latest order
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare("
-                    SELECT order_id, status, order_date
-                    FROM orders 
-                    WHERE vendor_id = ? 
-                    AND is_archive = 0 
-                    AND order_date >= CURDATE()
-                    ORDER BY order_date DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([$vendorId]);
-                $latestOrder = $stmt->fetch();
-                
-                if ($latestOrder) {
-                    $timeAgo = getTimeAgo($latestOrder['order_date']);
-                    return "Order #{$latestOrder['order_id']} - {$timeAgo}";
-                }
-            }
-        }
-        
-        // If user is a customer, get their latest order
-        if ($currentUser['role'] == 'customer') {
-            $customerModel = new Customer();
-            $customer = $customerModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($customer)) {
-                $customerId = $customer[0]['customer_id'];
-                $stmt = $db->prepare("
-                    SELECT order_id, status, order_date
-                    FROM orders 
-                    WHERE customer_id = ? 
-                    AND is_archive = 0 
-                    AND order_date >= CURDATE()
-                    ORDER BY order_date DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([$customerId]);
-                $latestOrder = $stmt->fetch();
-                
-                if ($latestOrder) {
-                    $timeAgo = getTimeAgo($latestOrder['order_date']);
-                    return "Order #{$latestOrder['order_id']} - {$timeAgo}";
-                }
-            }
-        }
-        
-        return 'No orders today';
-        
-    } catch (Exception $e) {
-        error_log('Error getting latest order info: ' . $e->getMessage());
-        return 'No orders today';
-    }
-}
 
-// Helper function to get time ago
-function getTimeAgo($datetime) {
-    $time = strtotime($datetime);
-    $now = time();
-    $diff = $now - $time;
-    
-    if ($diff < 60) {
-        return 'Just now';
-    } elseif ($diff < 3600) {
-        $minutes = floor($diff / 60);
-        return $minutes . ' min ago';
-    } elseif ($diff < 86400) {
-        $hours = floor($diff / 3600);
-        return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
-    } else {
-        $days = floor($diff / 86400);
-        return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
-    }
-}
+// Get staff data for staff dashboard
+if ($currentUser['role'] == 'staff') {
+    $tasks = $dashboardService->getStaffTasksData($currentUser['user_id']);
+    $performance = $dashboardService->getStaffPerformanceData($currentUser['user_id']);
+    $pendingTasks = array_filter($tasks, function($t) { return $t['status'] !== 'completed'; });
+    $completedTasks = array_filter($tasks, function($t) { return $t['status'] === 'completed'; });
+    $notifications = $notificationService->getUserNotifications($currentUser['user_id'], 5);
+        }
+        
+// Rest of functions moved to DashboardService
 
-// Function to get latest order time for activity display
-function getLatestOrderTime($currentUser) {
-    if (!$currentUser) return 'No recent activity';
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Get latest order date based on user role
-        if (hasPermission('view_analytics')) {
-            $stmt = $db->prepare("
-                SELECT order_date
-                FROM orders 
-                WHERE is_archive = 0 
-                ORDER BY order_date DESC
-                LIMIT 1
-            ");
-            $stmt->execute();
-            $latestOrder = $stmt->fetch();
-        } elseif ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare("
-                    SELECT order_date
-                    FROM orders 
-                    WHERE vendor_id = ? 
-                    AND is_archive = 0 
-                    ORDER BY order_date DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([$vendorId]);
-                $latestOrder = $stmt->fetch();
-            }
-        } elseif ($currentUser['role'] == 'customer') {
-            $customerModel = new Customer();
-            $customer = $customerModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($customer)) {
-                $customerId = $customer[0]['customer_id'];
-                $stmt = $db->prepare("
-                    SELECT order_date
-                    FROM orders 
-                    WHERE customer_id = ? 
-                    AND is_archive = 0 
-                    ORDER BY order_date DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([$customerId]);
-                $latestOrder = $stmt->fetch();
-            }
-        }
-        
-        if (isset($latestOrder) && $latestOrder) {
-            return getTimeAgo($latestOrder['order_date']);
-        }
-        
-        return 'No recent activity';
-        
-    } catch (Exception $e) {
-        error_log('Error getting latest order time: ' . $e->getMessage());
-        return 'No recent activity';
-    }
-}
 
-// Function to get latest product information for current user
-function getLatestProductInfo($currentUser) {
-    if (!$currentUser) return 'No products added';
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // If user has manage_products permission (admin), get latest platform product
-        if (hasPermission('manage_products')) {
-            $stmt = $db->prepare("
-                SELECT product_id, name, created_at
-                FROM products 
-                WHERE is_archive = 0 
-                ORDER BY created_at DESC
-                LIMIT 1
-            ");
-            $stmt->execute();
-            $latestProduct = $stmt->fetch();
-            
-            if ($latestProduct) {
-                return $latestProduct['name'];
-            }
-            return 'No products added';
-        }
-        
-        // If user is a vendor, get their latest product
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare("
-                    SELECT product_id, name, created_at
-                    FROM products 
-                    WHERE vendor_id = ? 
-                    AND is_archive = 0 
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([$vendorId]);
-                $latestProduct = $stmt->fetch();
-                
-                if ($latestProduct) {
-                    return $latestProduct['name'];
-                }
-            }
-        }
-        
-        return 'No products added';
-        
-    } catch (Exception $e) {
-        error_log('Error getting latest product info: ' . $e->getMessage());
-        return 'No products added';
-    }
-}
 
-// Function to get latest product time for activity display
-function getLatestProductTime($currentUser) {
-    if (!$currentUser) return 'No recent activity';
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Get latest product date based on user role
-        if (hasPermission('manage_products')) {
-            $stmt = $db->prepare("
-                SELECT created_at
-                FROM products 
-                WHERE is_archive = 0 
-                ORDER BY created_at DESC
-                LIMIT 1
-            ");
-            $stmt->execute();
-            $latestProduct = $stmt->fetch();
-        } elseif ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            
-            if (!empty($vendor)) {
-                $vendorId = $vendor[0]['vendor_id'];
-                $stmt = $db->prepare("
-                    SELECT created_at
-                    FROM products 
-                    WHERE vendor_id = ? 
-                    AND is_archive = 0 
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                ");
-                $stmt->execute([$vendorId]);
-                $latestProduct = $stmt->fetch();
-            }
-        }
-        
-        if (isset($latestProduct) && $latestProduct) {
-            return getTimeAgo($latestProduct['created_at']);
-        }
-        
-        return 'No recent activity';
-        
-    } catch (Exception $e) {
-        error_log('Error getting latest product time: ' . $e->getMessage());
-        return 'No recent activity';
-    }
-}
 
-// Function to get cart items count for current user
-function getCartItemsCount($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as item_count
-            FROM shopping_cart_items sci
-            JOIN shopping_carts sc ON sci.cart_id = sc.cart_id
-            WHERE sc.user_id = ? AND sc.is_active = 1
-        ");
-        $stmt->execute([$currentUser['user_id']]);
-        return $stmt->fetch()['item_count'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting cart items count: ' . $e->getMessage());
-        return 0;
-    }
-}
 
-// Function to get latest registered user
-function getLatestRegisteredUser() {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT username, created_at
-            FROM users
-            WHERE is_archive = 0
-            ORDER BY created_at DESC
-            LIMIT 1
-        ");
-        $stmt->execute();
-        $user = $stmt->fetch();
-        
-        if ($user) {
-            return [
-                'username' => $user['username'],
-                'time_ago' => getTimeAgo($user['created_at'])
-            ];
-        }
-        
-        return null;
-        
-    } catch (Exception $e) {
-        error_log('Error getting latest registered user: ' . $e->getMessage());
-        return null;
-    }
-}
 
-// Function to get latest approved vendor
-function getLatestApprovedVendor() {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT v.business_name, v.approved_at
-            FROM vendors v
-            WHERE v.is_approved = 1 AND v.is_archive = 0
-            ORDER BY v.approved_at DESC
-            LIMIT 1
-        ");
-        $stmt->execute();
-        $vendor = $stmt->fetch();
-        
-        if ($vendor) {
-            return [
-                'business_name' => $vendor['business_name'],
-                'time_ago' => getTimeAgo($vendor['approved_at'])
-            ];
-        }
-        
-        return null;
-        
-    } catch (Exception $e) {
-        error_log('Error getting latest approved vendor: ' . $e->getMessage());
-        return null;
-    }
-}
-
-// Function to get vendor count change percentage
-function getVendorCountChange() {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Get current month's vendor count
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as current_count
-            FROM vendors
-            WHERE is_approved = 1 
-            AND is_archive = 0
-            AND approved_at >= DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ");
-        $stmt->execute();
-        $currentCount = $stmt->fetch()['current_count'];
-        
-        // Get last month's vendor count
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as last_count
-            FROM vendors
-            WHERE is_approved = 1 
-            AND is_archive = 0
-            AND approved_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH) ,'%Y-%m-01')
-            AND approved_at < DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ");
-        $stmt->execute();
-        $lastCount = $stmt->fetch()['last_count'];
-        
-        if ($lastCount > 0) {
-            $percentChange = (($currentCount - $lastCount) / $lastCount) * 100;
-            return round($percentChange);
-        } else if ($currentCount > 0) {
-            return 100; // If last month was 0 and this month has vendors, return 100%
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting vendor count change: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get total number of active vendors
-function getVendorCount() {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as vendor_count
-            FROM vendors
-            WHERE is_archive = 0
-        ");
-        $stmt->execute();
-        return $stmt->fetch()['vendor_count'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting vendor count: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get order count change percentage
-function getOrderCountChange($currentUser) {
-    if (!$currentUser) return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Base query for yesterday's orders
-        $baseQuery = "
-            SELECT COUNT(*) as order_count
-            FROM orders
-            WHERE is_archive = 0
-            AND DATE(order_date) = ?
-        ";
-        
-        $whereClause = "";
-        $params = [];
-        
-        // Add role-specific conditions
-        if ($currentUser['role'] == 'vendor') {
-            $vendorModel = new Vendor();
-            $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-            if (!empty($vendor)) {
-                $whereClause = " AND vendor_id = ?";
-                $params[] = $vendor[0]['vendor_id'];
-            }
-        } elseif ($currentUser['role'] == 'customer') {
-            $whereClause = " AND customer_id = ?";
-            $params[] = $currentUser['user_id'];
-        } elseif (!hasPermission('manage_orders')) {
-            return 0;
-        }
-        
-        // Get yesterday's count
-        $yesterdayDate = date('Y-m-d', strtotime('-1 day'));
-        $yesterdayParams = array_merge([$yesterdayDate], $params);
-        $stmt = $db->prepare($baseQuery . $whereClause);
-        $stmt->execute($yesterdayParams);
-        $yesterdayCount = $stmt->fetch()['order_count'];
-        
-        // Get today's count
-        $todayDate = date('Y-m-d');
-        $todayParams = array_merge([$todayDate], $params);
-        $stmt = $db->prepare($baseQuery . $whereClause);
-        $stmt->execute($todayParams);
-        $todayCount = $stmt->fetch()['order_count'];
-        
-        if ($yesterdayCount > 0) {
-            $percentChange = (($todayCount - $yesterdayCount) / $yesterdayCount) * 100;
-            return round($percentChange);
-        } else if ($todayCount > 0) {
-            return 100; // If yesterday was 0 and today has orders, return 100%
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting order count change: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get total user count
-function getUserCount() {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as user_count
-            FROM users
-            WHERE is_archive = 0
-        ");
-        $stmt->execute();
-        return $stmt->fetch()['user_count'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting user count: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get user count change percentage
-function getUserCountChange() {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Get current month's user count
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as current_count
-            FROM users
-            WHERE is_archive = 0
-            AND created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ");
-        $stmt->execute();
-        $currentCount = $stmt->fetch()['current_count'];
-        
-        // Get last month's user count
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as last_count
-            FROM users
-            WHERE is_archive = 0
-            AND created_at >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH) ,'%Y-%m-01')
-            AND created_at < DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ");
-        $stmt->execute();
-        $lastCount = $stmt->fetch()['last_count'];
-        
-        if ($lastCount > 0) {
-            $percentChange = (($currentCount - $lastCount) / $lastCount) * 100;
-            return round($percentChange);
-        } else if ($currentCount > 0) {
-            return 100; // If last month was 0 and this month has users, return 100%
-        }
-        
-        return 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting user count change: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get recent activities
-function getRecentActivities($currentUser, $limit = 5) {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $activities = [];
-        
-        // Get recent orders
-        if (hasPermission('manage_orders') || hasPermission('view_orders')) {
-            $orderQuery = "
-                SELECT 
-                    'order' as type,
-                    o.order_id,
-                    o.order_date as activity_date,
-                    o.status,
-                    CONCAT('Order #', o.order_id, ' - ', o.status) as description
-                FROM orders o
-                WHERE o.is_archive = 0
-            ";
-            
-            if ($currentUser['role'] == 'vendor') {
-                $vendorModel = new Vendor();
-                $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-                if (!empty($vendor)) {
-                    $orderQuery .= " AND o.vendor_id = " . $vendor[0]['vendor_id'];
-                }
-            } elseif ($currentUser['role'] == 'customer') {
-                $orderQuery .= " AND o.customer_id = " . $currentUser['user_id'];
-            }
-            
-            $orderQuery .= " ORDER BY o.order_date DESC LIMIT 5";
-            
-            $stmt = $db->prepare($orderQuery);
-            $stmt->execute();
-            while ($row = $stmt->fetch()) {
-                $activities[] = [
-                    'type' => 'order',
-                    'icon' => 'fa-shopping-cart',
-                    'description' => $row['description'],
-                    'date' => $row['activity_date']
-                ];
-            }
-        }
-        
-        // Get recent products (if applicable)
-        if (hasPermission('manage_products')) {
-            $productQuery = "
-                SELECT 
-                    'product' as type,
-                    p.product_id,
-                    p.name,
-                    p.created_at as activity_date
-                FROM products p
-                WHERE p.is_archive = 0
-            ";
-            
-            if ($currentUser['role'] == 'vendor') {
-                $vendorModel = new Vendor();
-                $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-                if (!empty($vendor)) {
-                    $productQuery .= " AND p.vendor_id = " . $vendor[0]['vendor_id'];
-                }
-            }
-            
-            $productQuery .= " ORDER BY p.created_at DESC LIMIT 5";
-            
-            $stmt = $db->prepare($productQuery);
-            $stmt->execute();
-            while ($row = $stmt->fetch()) {
-                $activities[] = [
-                    'type' => 'product',
-                    'icon' => 'fa-box',
-                    'description' => "New product added: " . $row['name'],
-                    'date' => $row['activity_date']
-                ];
-            }
-        }
-        
-        // Get recent user registrations (if admin)
-        if (hasPermission('manage_users')) {
-            $stmt = $db->prepare("
-                SELECT 
-                    'user' as type,
-                    user_id,
-                    username,
-                    created_at as activity_date
-                FROM users
-                WHERE is_archive = 0
-                ORDER BY created_at DESC
-                LIMIT 5
-            ");
-            $stmt->execute();
-            while ($row = $stmt->fetch()) {
-                $activities[] = [
-                    'type' => 'user',
-                    'icon' => 'fa-user-plus',
-                    'description' => "New user registered: " . $row['username'],
-                    'date' => $row['activity_date']
-                ];
-            }
-        }
-        
-        // Sort all activities by date
-        usort($activities, function($a, $b) {
-            return strtotime($b['date']) - strtotime($a['date']);
-        });
-        
-        return array_slice($activities, 0, $limit);
-        
-    } catch (Exception $e) {
-        error_log('Error getting recent activities: ' . $e->getMessage());
-        return [];
-    }
-}
-
-// Function to get customer's total spent amount
-function getCustomerTotalSpent($currentUser) {
-    if (!$currentUser || $currentUser['role'] !== 'customer') return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT COALESCE(SUM(total_amount), 0) as total_spent
-            FROM orders
-            WHERE customer_id = ?
-            AND status = 'completed'
-            AND is_archive = 0
-            AND order_date >= DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ");
-        $stmt->execute([$currentUser['user_id']]);
-        return $stmt->fetch()['total_spent'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting customer total spent: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get customer's order count
-function getCustomerOrderCount($currentUser) {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as order_count
-            FROM orders
-            WHERE customer_id = ?
-            AND is_archive = 0
-        ");
-        $stmt->execute([$currentUser['user_id']]);
-        return $stmt->fetch()['order_count'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting customer order count: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get vendor's pending orders count
-function getVendorPendingOrders($currentUser) {
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Get vendor_id from user_id
-        $vendorModel = new Vendor();
-        $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-        if (empty($vendor)) {
-            return 0;
-        }
-        
-        $stmt = $db->prepare("
-            SELECT COUNT(*) as pending_count
-            FROM orders
-            WHERE vendor_id = ?
-            AND status IN ('pending', 'processing')
-            AND is_archive = 0
-        ");
-        $stmt->execute([$vendor[0]['vendor_id']]);
-        return $stmt->fetch()['pending_count'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting vendor pending orders: ' . $e->getMessage());
-        return 0;
-    }
-}
-
-// Function to get vendor's total revenue
-function getVendorTotalRevenue($currentUser) {
-    if (!$currentUser || $currentUser['role'] !== 'vendor') return 0;
-    
-    try {
-        global $host, $user, $pass, $dbname;
-        $db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Get vendor_id from user_id
-        $vendorModel = new Vendor();
-        $vendor = $vendorModel->findAll(['user_id' => $currentUser['user_id']]);
-        if (empty($vendor)) {
-            return 0;
-        }
-        
-        $stmt = $db->prepare("
-            SELECT COALESCE(SUM(total_amount), 0) as total_revenue
-            FROM orders
-            WHERE vendor_id = ?
-            AND status = 'completed'
-            AND is_archive = 0
-            AND order_date >= DATE_FORMAT(NOW() ,'%Y-%m-01')
-        ");
-        $stmt->execute([$vendor[0]['vendor_id']]);
-        return $stmt->fetch()['total_revenue'] ?? 0;
-        
-    } catch (Exception $e) {
-        error_log('Error getting vendor total revenue: ' . $e->getMessage());
-        return 0;
-    }
-}
 
 ?>
 
@@ -1267,7 +95,7 @@ function getVendorTotalRevenue($currentUser) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo getDashboardTitle($currentUser); ?> - AgriMarket Solutions</title>
+    <title><?php echo $dashboardService->getDashboardTitle($currentUser); ?> - AgriMarket Solutions</title>
     <link rel="stylesheet" href="../components/main.css">
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -1281,7 +109,7 @@ function getVendorTotalRevenue($currentUser) {
         <main class="main-content">
             <!-- Include Shared Header -->
             <?php 
-            $pageTitle = getDashboardTitle($currentUser);
+            $pageTitle = $dashboardService->getDashboardTitle($currentUser);
             include '../components/header.php'; 
             ?>
             
@@ -1289,28 +117,12 @@ function getVendorTotalRevenue($currentUser) {
             <div class="dashboard-content">
                 <?php if ($currentUser['role'] == 'staff'): ?>
                     <?php
-                    require_once __DIR__ . '/../../services/StaffService.php';
-                    require_once __DIR__ . '/../../models/Notification.php';
-                    $staffService = new StaffService();
-                    $staffModel = new Staff();
-                    $userModel = new User();
-                    $notificationModel = new Notification();
-
-                    // Get staff_id from user_id
-                    $staff = $staffModel->findAll(['user_id' => $currentUser['user_id']]);
-                    $staffId = $staff[0]['staff_id'] ?? null;
-
-                    // Get tasks
-                    $tasks = $staffId ? $staffService->getStaffTasks($staffId) : [];
+                    // Use DashboardService for staff data
+                    $tasks = $dashboardService->getStaffTasksData($currentUser['user_id']);
+                    $performance = $dashboardService->getStaffPerformanceData($currentUser['user_id']);
                     $pendingTasks = array_filter($tasks, function($t) { return $t['status'] !== 'completed'; });
                     $completedTasks = array_filter($tasks, function($t) { return $t['status'] === 'completed'; });
-
-                    // Get performance
-                    $performance = $staffId ? $staffService->getStaffPerformance($staffId) : [];
-
-                    // Get notifications
-                    $notifications = $notificationModel->findAll(['user_id' => $currentUser['user_id'], 'is_read' => 0], 5);
-                    $unreadCount = count($notifications);
+                    $unreadCount = count(array_filter($userNotifications, function($n) { return !$n['is_read']; }));
                     ?>
                     <div class="dashboard-overview">
                         <div class="stats-grid" style="margin-bottom: 2rem;">
@@ -1475,9 +287,9 @@ function getVendorTotalRevenue($currentUser) {
                             <i class="fas fa-users"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getUserCount(); ?></h3>
+                            <h3><?php echo $dashboardService->getUserCount(); ?></h3>
                             <p>Total Users</p>
-                            <?php $userChange = getUserCountChange(); ?>
+                            <?php $userChange = $dashboardService->getUserCountChange(); ?>
                             <span class="stat-change <?php echo $userChange >= 0 ? 'positive' : 'negative'; ?>">
                                 <?php echo ($userChange >= 0 ? '+' : '') . $userChange; ?>% from last month
                             </span>
@@ -1491,9 +303,9 @@ function getVendorTotalRevenue($currentUser) {
                             <i class="fas fa-store"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getVendorCount(); ?></h3>
+                            <h3><?php echo $dashboardService->getVendorCount(); ?></h3>
                             <p>Active Vendors</p>
-                            <?php $vendorChange = getVendorCountChange(); ?>
+                            <?php $vendorChange = $dashboardService->getVendorCountChange(); ?>
                             <span class="stat-change <?php echo $vendorChange >= 0 ? 'positive' : 'negative'; ?>">
                                 <?php echo ($vendorChange >= 0 ? '+' : '') . $vendorChange; ?>% from last month
                             </span>
@@ -1508,9 +320,9 @@ function getVendorTotalRevenue($currentUser) {
                             <i class="fas fa-box"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getProductCount($currentUser); ?></h3>
+                            <h3><?php echo $dashboardService->getProductCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_products') ? 'Total Products' : 'My Products'; ?></p>
-                            <?php $productChange = getProductCountChange($currentUser); ?>
+                            <?php $productChange = $dashboardService->getProductCountChange($currentUser); ?>
                             <span class="stat-change <?php echo $productChange >= 0 ? 'positive' : 'negative'; ?>">
                                 <?php echo ($productChange >= 0 ? '+' : '') . $productChange; ?>% from last month
                             </span>
@@ -1531,14 +343,14 @@ function getVendorTotalRevenue($currentUser) {
                             <i class="fas fa-shopping-cart"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getOrderCount($currentUser); ?></h3>
+                            <h3><?php echo $dashboardService->getOrderCount($currentUser); ?></h3>
                             <p><?php echo hasPermission('manage_orders') ? 'Orders Today' : 'My Orders Today'; ?></p>
-                            <?php $orderChange = getOrderCountChange($currentUser); ?>
+                            <?php $orderChange = $dashboardService->getOrderCountChange($currentUser); ?>
                             <span class="stat-change <?php echo $orderChange >= 0 ? 'positive' : 'negative'; ?>">
                                 <?php echo ($orderChange >= 0 ? '+' : '') . $orderChange; ?>% from yesterday
                             </span>
                             <div class="total-orders" style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
-                                Total Orders: <?php echo getTotalOrderCount($currentUser); ?>
+                                Total Orders: <?php echo $dashboardService->getTotalOrderCount($currentUser); ?>
                             </div>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
                                 <a href="/agrimarket-erd/v1/order-management/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
@@ -1557,7 +369,7 @@ function getVendorTotalRevenue($currentUser) {
                             <i class="fas fa-shopping-bag"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getCartItemsCount($currentUser); ?></h3>
+                            <h3><?php echo $dashboardService->getCartItemsCount($currentUser); ?></h3>
                             <p>Items in Cart</p>
                             <span class="stat-change neutral">Ready to checkout</span>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
@@ -1571,14 +383,37 @@ function getVendorTotalRevenue($currentUser) {
                     
                     <div class="stat-card">
                         <div class="stat-icon orders">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3><?php echo $dashboardService->getCustomerPendingOrders($currentUser); ?></h3>
+                            <p>Pending Orders</p>
+                            <?php $pendingCount = $dashboardService->getCustomerPendingOrders($currentUser); ?>
+                            <span class="stat-change <?php echo $pendingCount > 0 ? 'warning' : 'neutral'; ?>">
+                                <?php echo $pendingCount > 0 ? 'Track progress' : 'No pending orders'; ?>
+                            </span>
+                            <div class="subscription-actions" style="margin-top: 0.5rem;">
+                                <a href="/agrimarket-erd/v1/order-management/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                    <i class="fas fa-eye"></i>
+                                    Track Orders
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon orders">
                             <i class="fas fa-receipt"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getCustomerOrderCount($currentUser); ?></h3>
+                            <h3><?php echo $dashboardService->getCustomerOrderCount($currentUser); ?></h3>
                             <p>Total Orders</p>
-                            <span class="stat-change neutral">
-                                RM <?php echo number_format(getCustomerTotalSpent($currentUser), 2); ?> spent
+                            <span class="stat-change positive">
+                                RM <?php echo number_format($dashboardService->getCustomerTotalSpent($currentUser), 2); ?> total spent
                             </span>
+                            <div class="total-orders" style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                                This Month: RM <?php echo number_format($dashboardService->getCustomerMonthlySpent($currentUser), 2); ?>
+                            </div>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
                                 <a href="/agrimarket-erd/v1/order-management/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                                     <i class="fas fa-list"></i>
@@ -1587,6 +422,7 @@ function getVendorTotalRevenue($currentUser) {
                             </div>
                         </div>
                     </div>
+
                     <?php endif; ?>
 
                     <!-- Vendor Stats -->
@@ -1596,7 +432,7 @@ function getVendorTotalRevenue($currentUser) {
                             <i class="fas fa-clock"></i>
                         </div>
                         <div class="stat-info">
-                            <h3><?php echo getVendorPendingOrders($currentUser); ?></h3>
+                            <h3><?php echo $dashboardService->getVendorPendingOrders($currentUser); ?></h3>
                             <p>Pending Orders</p>
                             <span class="stat-change warning">Needs attention</span>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
@@ -1609,13 +445,16 @@ function getVendorTotalRevenue($currentUser) {
                     </div>
 
                     <div class="stat-card">
-                        <div class="stat-icon revenue">
+                        <div class="stat-icon reports">
                             <i class="fas fa-dollar-sign"></i>
                         </div>
                         <div class="stat-info">
-                            <h3>RM <?php echo number_format(getVendorTotalRevenue($currentUser), 2); ?></h3>
+                            <h3>RM <?php echo number_format($dashboardService->getVendorTotalRevenue($currentUser), 2); ?></h3>
                             <p>Total Revenue</p>
                             <span class="stat-change positive">From completed orders</span>
+                            <div class="total-orders" style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                                This Month: RM <?php echo number_format($dashboardService->getVendorMonthlyRevenue($currentUser), 2); ?>
+                            </div>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
                                 <a href="/agrimarket-erd/v1/analytics/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                                     <i class="fas fa-chart-line"></i>
@@ -1627,14 +466,14 @@ function getVendorTotalRevenue($currentUser) {
                     <?php endif; ?>
 
                     <!-- Report Stats -->
-                    <?php if (hasPermission('view_analytics') || hasPermission('view_reports') || $currentUser['role'] == 'vendor' || $currentUser['role'] == 'admin'): ?>
+                    <?php if ((hasPermission('view_analytics') || hasPermission('view_reports')) && $currentUser['role'] == 'admin'): ?>
                     <div class="stat-card">
                         <div class="stat-icon reports" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
                             <i class="fas fa-chart-line"></i>
                         </div>
                         <div class="stat-info">
-                            <h3>RM <?php echo number_format(getRevenueAmount($currentUser), 2); ?></h3>
-                            <p><?php echo hasPermission('view_analytics') ? 'Total Revenue' : 'My Revenue'; ?></p>
+                            <h3>RM <?php echo number_format($dashboardService->getRevenueAmount($currentUser), 2); ?></h3>
+                            <p>Total Revenue</p>
                             <div class="subscription-actions" style="margin-top: 0.5rem;">
                                 <a href="/agrimarket-erd/v1/analytics/" class="btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                                     <i class="fas fa-chart-line"></i>
@@ -1648,10 +487,10 @@ function getVendorTotalRevenue($currentUser) {
                     
                     <!-- Subscription Tier Card for Vendors -->
                     <?php if ($currentUser['role'] == 'vendor'): ?>
-                        <?php $subscriptionDetails = getVendorSubscriptionDetails($currentUser); ?>
+                        <?php $subscriptionDetails = $dashboardService->getVendorSubscriptionDetails($currentUser); ?>
                         <?php if ($subscriptionDetails): ?>
                             <div class="stat-card">
-                                <div class="stat-icon subscription" style="background: <?php echo getSubscriptionTierColor($subscriptionDetails['tier_name']); ?>; color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
+                                <div class="stat-icon subscription" style="background: <?php echo $dashboardService->getSubscriptionTierColor($subscriptionDetails['tier_name']); ?>; color: white; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 0.75rem; font-size: 1.5rem;">
                                     <i class="fas fa-gem"></i>
                                 </div>
                                 <div class="stat-info">
@@ -1696,10 +535,10 @@ function getVendorTotalRevenue($currentUser) {
                         <div class="card-header">
                             <h3>Recent Activities</h3>
                         </div>
-                        <div class="card-content">
+                        <div class="card-content" style="padding: 1.5rem;">
                             <div class="activity-list">
                                 <?php 
-                                $recentActivities = getRecentActivities($currentUser);
+                                $recentActivities = $dashboardService->getRecentActivities($currentUser, $userPermissions);
                                 if (!empty($recentActivities)):
                                     foreach ($recentActivities as $activity):
                                 ?>
@@ -1709,7 +548,7 @@ function getVendorTotalRevenue($currentUser) {
                                     </div>
                                     <div class="activity-details">
                                         <p><?php echo htmlspecialchars($activity['description']); ?></p>
-                                        <span class="activity-time"><?php echo getTimeAgo($activity['date']); ?></span>
+                                        <span class="activity-time"><?php echo $dashboardService->getTimeAgo($activity['date']); ?></span>
                                     </div>
                                 </div>
                                 <?php 
@@ -1882,7 +721,7 @@ function getVendorTotalRevenue($currentUser) {
                 <!-- Dashboard Home Content (current content) -->
                 <div class="dashboard-overview">
                     <div class="welcome-section">
-                        <h1><?php echo getDashboardTitle($currentUser); ?></h1>
+                        <h1><?php echo $dashboardService->getDashboardTitle($currentUser); ?></h1>
                         <p>Welcome back, <?php echo htmlspecialchars($currentUser['name']); ?>! Here's what's happening with your account.</p>
                     </div>
                     

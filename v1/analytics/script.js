@@ -243,13 +243,7 @@ function initializePageVisitTypesChart() {
     });
 }
 
-// Update all charts
 function updateCharts() {
-    // In a real implementation, you would fetch trend data and update charts
-    // For now, we'll just log that charts should be updated
-    console.log('Charts updated for timeframe:', currentTimeframe);
-
-    // Update page visit types chart
     loadPageVisitTrendsByType();
 }
 
@@ -268,8 +262,8 @@ function loadMostSearchedProducts() {
         .then(data => {
             if (data.success) {
                 populateTable('searchedProductsTable', data.data, [
-                    'product_name', 'category_name', 'vendor_name', 'search_count',
-                    'unique_searchers', 'clicks', 'ctr'
+                    'product_name', 'category', 'vendor_name', 'search_count',
+                    'unique_searchers', 'clicks', 'click_through_rate'
                 ]);
             }
         })
@@ -555,10 +549,16 @@ function loadSalesReport() {
 // Populate table with data
 function populateTable(tableId, data, columns) {
     const table = document.getElementById(tableId);
-    if (!table) return;
+    if (!table) {
+        console.error('Table not found:', tableId);
+        return;
+    }
 
     const tbody = table.querySelector('tbody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('Table body not found for:', tableId);
+        return;
+    }
 
     // Clear existing data
     tbody.innerHTML = '';
@@ -569,15 +569,32 @@ function populateTable(tableId, data, columns) {
     }
 
     // Populate rows
-    data.forEach(row => {
+    data.forEach((row, index) => {
         const tr = document.createElement('tr');
         columns.forEach(column => {
             const td = document.createElement('td');
-            let value = row[column.key] || '';
+            let value = '';
 
-            // Format specific columns
-            if (column.format) {
-                value = column.format(value);
+            // Handle both string and object column formats
+            if (typeof column === 'string') {
+                // Simple string format - use as key
+                value = row[column] || '';
+            } else if (typeof column === 'object' && column.key) {
+                // Object format with key and optional format function
+                value = row[column.key] || '';
+                if (column.format) {
+                    value = column.format(value);
+                }
+            }
+
+            // Format specific columns based on column name/key
+            const columnKey = typeof column === 'string' ? column : column.key;
+            if (columnKey === 'search_count' || columnKey === 'unique_searchers' || columnKey === 'clicks' || columnKey === 'product_clicks') {
+                value = parseInt(value || 0).toLocaleString();
+            } else if (columnKey === 'click_rate' || columnKey === 'ctr' || columnKey === 'click_through_rate') {
+                value = parseFloat(value || 0).toFixed(2) + '%';
+            } else if (columnKey === 'price') {
+                value = 'RM ' + parseFloat(value || 0).toFixed(2);
             }
 
             td.textContent = value;
