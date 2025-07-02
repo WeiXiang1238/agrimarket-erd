@@ -3,8 +3,6 @@
 require_once __DIR__ . '/../Db_Connect.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/ProductCategory.php';
-require_once __DIR__ . '/../models/ProductImage.php';
-require_once __DIR__ . '/../models/ProductAttribute.php';
 require_once __DIR__ . '/../models/Vendor.php';
 
 /**
