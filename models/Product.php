@@ -77,10 +77,7 @@ class Product extends BaseModel
         'category' => 'belongsTo:ProductCategory:category_id',
         'reviews' => 'hasMany:Review:product_id',
         'order_items' => 'hasMany:OrderItem:product_id',
-        'shopping_cart' => 'hasMany:ShoppingCart:product_id',
-        'images' => 'hasMany:ProductImage:product_id',
-        'attributes' => 'hasMany:ProductAttribute:product_id',
-        'preferences' => 'hasMany:CustomerPreference:product_id'
+        'shopping_cart' => 'hasMany:ShoppingCart:product_id'
     ];
 }
 

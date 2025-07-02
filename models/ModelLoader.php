@@ -28,8 +28,6 @@ class ModelLoader
         // Product Management
         'Product' => 'Product.php',
         'ProductCategory' => 'ProductCategory.php',
-        'ProductImage' => 'ProductImage.php',
-        'ProductAttribute' => 'ProductAttribute.php',
         
         // Order Management
         'Order' => 'Order.php',
@@ -38,15 +36,10 @@ class ModelLoader
         
         // Customer Data
         'CustomerAddress' => 'CustomerAddress.php',
-        'CustomerPreference' => 'CustomerPreference.php',
         
         // Payment System
         'PaymentMethod' => 'PaymentMethod.php',
         'Payment' => 'Payment.php',
-        
-        // Promotions and Discounts
-        'PromoCode' => 'PromoCode.php',
-        'PromoCodeUsage' => 'PromoCodeUsage.php',
         
         // Subscriptions
         'SubscriptionTier' => 'SubscriptionTier.php',
@@ -58,10 +51,6 @@ class ModelLoader
         
         // Notifications
         'Notification' => 'Notification.php',
-        'NotificationSetting' => 'NotificationSetting.php',
-        
-        // Vendor Settings
-        'VendorSetting' => 'VendorSetting.php',
         
         // Analytics and Tracking
         'SearchLog' => 'SearchLog.php',
@@ -113,15 +102,15 @@ class ModelLoader
         return [
             'User Management' => ['User', 'Role', 'Permission', 'UserRole', 'RolePermission'],
             'User Types' => ['Customer', 'Vendor', 'Staff', 'StaffTask'],
-            'Product Management' => ['Product', 'ProductCategory', 'ProductImage', 'ProductAttribute'],
+            'Product Management' => ['Product', 'ProductCategory'],
             'Order Management' => ['Order', 'OrderItem', 'ShoppingCart'],
-            'Customer Data' => ['CustomerAddress', 'CustomerPreference'],
+            'Customer Data' => ['CustomerAddress'],
             'Payment System' => ['PaymentMethod', 'Payment'],
-            'Promotions and Discounts' => ['PromoCode', 'PromoCodeUsage'],
+            'Promotions and Discounts' => [],
             'Subscriptions' => ['SubscriptionTier', 'VendorSubscription'],
             'Reviews and Ratings' => ['Review', 'VendorReview'],
-            'Notifications' => ['Notification', 'NotificationSetting'],
-            'Vendor Settings' => ['VendorSetting'],
+            'Notifications' => ['Notification'],
+            'Vendor Settings' => [],
             'Analytics and Tracking' => ['SearchLog', 'PageVisit', 'AuditLog']
         ];
     }

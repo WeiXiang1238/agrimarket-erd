@@ -200,16 +200,6 @@ function hasSidebarPermission($permission) {
                 </a>
             </li>
             <?php endif; ?>
-            
-            <!-- System Settings (Admin) -->
-            <?php if (hasSidebarPermission('manage_system')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/settings/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/settings/">
-                    <i class="fas fa-cog"></i>
-                    <span>System Settings</span>
-                </a>
-            </li>
-            <?php endif; ?>
         </ul>
     </nav>
 </aside>

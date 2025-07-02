@@ -279,8 +279,13 @@ class OrderService
                 WHERE $whereClause
             ");
             
-            $stmt->execute($params);
-            $order = $stmt->fetch();
+            if (!empty($params)) {
+                $types = str_repeat('s', count($params));
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $order = $result ? $result->fetch_assoc() : null;
             
             if (!$order) {
                 return ['success' => false, 'message' => 'Order not found'];
@@ -300,8 +305,10 @@ class OrderService
                 WHERE oi.order_id = ?
             ");
             
-            $stmt->execute([$orderId]);
-            $order['items'] = $stmt->fetchAll();
+            $stmt->bind_param('i', $orderId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $order['items'] = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             
             return ['success' => true, 'order' => $order];
             
@@ -343,8 +350,13 @@ class OrderService
                 GROUP BY o.order_id
             ");
             
-            $stmt->execute($params);
-            $tracking = $stmt->fetch();
+            if (!empty($params)) {
+                $types = str_repeat('s', count($params));
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $tracking = $result ? $result->fetch_assoc() : null;
             
             if (!$tracking) {
                 return ['success' => false, 'message' => 'Order not found'];
@@ -380,8 +392,10 @@ class OrderService
                 WHERE o.order_id = ? AND o.customer_id = ? AND o.is_archive = 0
             ");
             
-            $stmt->execute([$orderId, $customerId]);
-            $items = $stmt->fetchAll();
+            $stmt->bind_param('ii', $orderId, $customerId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $items = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             
             if (empty($items)) {
                 return ['success' => false, 'message' => 'Original order not found'];
@@ -657,9 +671,11 @@ class OrderService
                 WHERE order_id = ? AND is_archive = 0
             ");
             
-            $stmt->execute($params);
+            $types = str_repeat('s', count($params));
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
             
-            if ($stmt->rowCount() > 0) {
+            if ($stmt->affected_rows > 0) {
                 // Create notification for customer about status update
                 try {
                     // Get order details to find customer
@@ -670,8 +686,10 @@ class OrderService
                         LEFT JOIN users u ON c.user_id = u.user_id
                         WHERE o.order_id = ?
                     ");
-                    $stmt->execute([$orderId]);
-                    $orderInfo = $stmt->fetch();
+                    $stmt->bind_param('i', $orderId);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $orderInfo = $result ? $result->fetch_assoc() : null;
                     
                     if ($orderInfo && $orderInfo['user_id']) {
                         $statusMessages = [
@@ -725,8 +743,10 @@ class OrderService
                 FROM orders 
                 WHERE order_id = ? AND customer_id = ? AND is_archive = 0
             ");
-            $stmt->execute([$orderId, $customerId]);
-            $order = $stmt->fetch();
+            $stmt->bind_param('ii', $orderId, $customerId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $order = $result ? $result->fetch_assoc() : null;
             
             if (!$order) {
                 throw new Exception('Order not found');
@@ -742,7 +762,8 @@ class OrderService
                 SET status = 'Cancelled', cancel_reason = ?
                 WHERE order_id = ?
             ");
-            $stmt->execute([$reason, $orderId]);
+            $stmt->bind_param('si', $reason, $orderId);
+            $stmt->execute();
             
             // Restore product stock
             $stmt = $this->db->prepare("
@@ -750,8 +771,10 @@ class OrderService
                 FROM order_items oi
                 WHERE oi.order_id = ?
             ");
-            $stmt->execute([$orderId]);
-            $items = $stmt->fetchAll();
+            $stmt->bind_param('i', $orderId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $items = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             
             foreach ($items as $item) {
                 $stmt = $this->db->prepare("
@@ -759,7 +782,8 @@ class OrderService
                     SET stock_quantity = stock_quantity + ?
                     WHERE product_id = ?
                 ");
-                $stmt->execute([$item['quantity'], $item['product_id']]);
+                $stmt->bind_param('ii', $item['quantity'], $item['product_id']);
+                $stmt->execute();
             }
             
             $this->db->commit();
@@ -773,8 +797,10 @@ class OrderService
                     LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
                     WHERE o.order_id = ?
                 ");
-                $stmt->execute([$orderId]);
-                $orderInfo = $stmt->fetch();
+                $stmt->bind_param('i', $orderId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $orderInfo = $result ? $result->fetch_assoc() : null;
                 
                 if ($orderInfo && $orderInfo['user_id']) {
                     $this->notificationService->createNotification(
@@ -820,8 +846,14 @@ class OrderService
                 FROM orders o 
                 WHERE $whereClause
             ");
-            $countStmt->execute($params);
-            $total = $countStmt->fetch()['total'];
+            if (!empty($params)) {
+                $types = str_repeat('s', count($params));
+                $countStmt->bind_param($types, ...$params);
+            }
+            $countStmt->execute();
+            $result = $countStmt->get_result();
+            $totalData = $result ? $result->fetch_assoc() : null;
+            $total = $totalData ? $totalData['total'] : 0;
             
             // Get orders - create separate params array for main query
             $mainQueryParams = $params; // Copy original params
@@ -850,18 +882,15 @@ class OrderService
                 LIMIT ? OFFSET ?
             ");
             
-            // Bind WHERE clause parameters first
-            $index = 1;
-            foreach ($params as $val) {
-                $stmt->bindValue($index++, $val);
-            }
-            
-            // Bind LIMIT and OFFSET with correct type
-            $stmt->bindValue($index++, (int)$limit, PDO::PARAM_INT);
-            $stmt->bindValue($index++, (int)$offset, PDO::PARAM_INT);
-            
+            // Prepare types string for bind_param
+            $types = str_repeat('s', count($params)) . 'ii';
+            $bindParams = $params;
+            $bindParams[] = (int)$limit;
+            $bindParams[] = (int)$offset;
+            $stmt->bind_param($types, ...$bindParams);
             $stmt->execute();
-            $orders = $stmt->fetchAll();
+            $result = $stmt->get_result();
+            $orders = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             
             return [
                 'success' => true,
@@ -937,18 +966,15 @@ class OrderService
                 LIMIT ? OFFSET ?
             ");
             
-            // Bind WHERE clause parameters first
-            $index = 1;
-            foreach ($params as $val) {
-                $stmt->bindValue($index++, $val);
-            }
-            
-            // Bind LIMIT and OFFSET with correct type
-            $stmt->bindValue($index++, (int)$limit, PDO::PARAM_INT);
-            $stmt->bindValue($index++, (int)$offset, PDO::PARAM_INT);
-            
+            // Prepare types string for bind_param
+            $types = str_repeat('s', count($params)) . 'ii';
+            $bindParams = $params;
+            $bindParams[] = (int)$limit;
+            $bindParams[] = (int)$offset;
+            $stmt->bind_param($types, ...$bindParams);
             $stmt->execute();
-            $orders = $stmt->fetchAll();
+            $result = $stmt->get_result();
+            $orders = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             
             return [
                 'success' => true,

@@ -61,7 +61,6 @@ class User extends BaseModel
         'vendor' => 'hasOne:Vendor:user_id',
         'staff' => 'hasOne:Staff:user_id',
         'notifications' => 'hasMany:Notification:user_id',
-        'notification_settings' => 'hasOne:NotificationSetting:user_id',
         'audit_logs' => 'hasMany:AuditLog:user_id'
     ];
 }

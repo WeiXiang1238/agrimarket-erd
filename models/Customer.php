@@ -43,7 +43,6 @@ class Customer extends BaseModel
         'reviews' => 'hasMany:Review:customer_id',
         'shopping_cart' => 'hasMany:ShoppingCart:customer_id',
         'addresses' => 'hasMany:CustomerAddress:customer_id',
-        'preferences' => 'hasMany:CustomerPreference:customer_id',
         'vendor_reviews' => 'hasMany:VendorReview:customer_id'
     ];
 }
