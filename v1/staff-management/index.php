@@ -116,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             case 'assign_task':
                 $taskData = [
                     'staff_id' => $_POST['staff_id'],
-                    'title' => $_POST['title'],
-                    'description' => $_POST['description'],
+                    'task_title' => $_POST['title'],
+                    'task_description' => $_POST['description'],
                     'priority' => $_POST['priority'] ?? 'medium',
                     'due_date' => $_POST['due_date'] ?? null
                 ];
@@ -148,8 +148,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             case 'update_task':
                 $taskData = [
                     'task_id' => $_POST['task_id'],
-                    'title' => $_POST['title'],
-                    'description' => $_POST['description'],
+                    'task_title' => $_POST['title'],
+                    'task_description' => $_POST['description'],
                     'priority' => $_POST['priority'] ?? 'medium',
                     'due_date' => $_POST['due_date'] ?? null
                 ];

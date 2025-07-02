@@ -127,14 +127,6 @@ if ($currentUser['role'] == 'staff') {
                     <div class="dashboard-overview">
                         <div class="stats-grid" style="margin-bottom: 2rem;">
                             <div class="stat-card">
-                                <div class="stat-icon" style="background: #6b7280;"><i class="fas fa-info-circle"></i></div>
-                                <div class="stat-info">
-                                    <h3><?php echo htmlspecialchars($currentUser['username']); ?></h3>
-                                    <p>Role: Staff</p>
-                                    <span class="stat-change neutral">Active</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
                                 <div class="stat-icon" style="background: #2563eb;"><i class="fas fa-list-check"></i></div>
                                 <div class="stat-info">
                                     <h3><?php echo count($pendingTasks); ?></h3>
@@ -670,43 +662,12 @@ if ($currentUser['role'] == 'staff') {
             
             // Simulate loading delay and then load appropriate content
             setTimeout(() => {
-                console.log('Section:', section);
                 switch(section) {
                     case 'dashboard':
                         loadDashboardHome();
                         break;
-                    case 'vendors':
-                        loadVendorManagement();
-                        break;
-                    case 'staff':
-                        loadStaffManagement();
-                        break;
-                    case 'products':
-                        loadProductManagement();
-                        break;
-                    case 'inventory':
-                        loadInventoryManagement();
-                        break;
-                    case 'orders':
-                        loadOrderManagement();
-                        break;
                     case 'shop':
                         loadShopSection();
-                        break;
-                    case 'cart':
-                        loadCartSection();
-                        break;
-                    case 'analytics':
-                        loadAnalytics();
-                        break;
-                    case 'support':
-                        loadCustomerSupport();
-                        break;
-                    case 'promotions':
-                        loadPromotions();
-                        break;
-                    case 'settings':
-                        loadSystemSettings();
                         break;
                     default:
                         loadComingSoon(sectionName);
@@ -801,27 +762,6 @@ if ($currentUser['role'] == 'staff') {
             `;
         }
         
-        // Specific content loaders for different sections
-        function loadVendorManagement() {
-            loadComingSoon('Vendor Management');
-        }
-        
-        function loadStaffManagement() {
-            loadComingSoon('Staff Management');
-        }
-        
-        function loadProductManagement() {
-            loadComingSoon('Product Management');
-        }
-        
-        function loadInventoryManagement() {
-            loadComingSoon('Inventory Management');
-        }
-        
-        function loadOrderManagement() {
-            loadComingSoon('Order Management');
-        }
-        
         function loadShopSection() {
             const contentArea = document.querySelector('.dashboard-content');
             contentArea.innerHTML = `
@@ -836,26 +776,6 @@ if ($currentUser['role'] == 'staff') {
                     contentArea.innerHTML = html;
                 });
             return;
-        }
-        
-        function loadCartSection() {
-          
-        }
-        
-        function loadAnalytics() {
-            
-        }
-        
-        function loadCustomerSupport() {
-            loadComingSoon('Customer Support');
-        }
-        
-        function loadPromotions() {
-            loadComingSoon('Promotions');
-        }
-        
-        function loadSystemSettings() {
-            loadComingSoon('System Settings');
         }
         
         // Notification functionality

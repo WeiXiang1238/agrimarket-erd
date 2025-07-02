@@ -139,6 +139,16 @@ function hasSidebarPermission($permission) {
             </li>
             <?php endif; ?>
             
+            <!-- Inventory Management -->
+            <?php if (hasSidebarPermission('manage_inventory') || ($currentUser['role'] ?? '') === 'admin' || ($currentUser['role'] ?? '') === 'vendor'): ?>
+            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/inventory-management/') !== false ? 'active' : ''; ?>">
+                <a href="/agrimarket-erd/v1/inventory-management/">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory Management</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            
             <!-- Order Management / My Orders -->
             <?php if (hasSidebarPermission('manage_orders') || hasSidebarPermission('view_orders') || ($currentUser['role'] ?? '') === 'customer'): ?>
             <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/order-management/') !== false ? 'active' : ''; ?>">
@@ -177,16 +187,6 @@ function hasSidebarPermission($permission) {
                 <a href="/agrimarket-erd/v1/analytics/">
                     <i class="fas fa-chart-bar"></i>
                     <span><?php echo hasSidebarPermission('view_analytics') ? 'Analytics' : 'Reports'; ?></span>
-                </a>
-            </li>
-            <?php endif; ?>
-            
-            <!-- Customer Support (Staff) -->
-            <?php if (hasSidebarPermission('customer_support')): ?>
-            <li class="<?php echo strpos($_SERVER['REQUEST_URI'], '/support/') !== false ? 'active' : ''; ?>">
-                <a href="/agrimarket-erd/v1/support/">
-                    <i class="fas fa-headset"></i>
-                    <span>Customer Support</span>
                 </a>
             </li>
             <?php endif; ?>

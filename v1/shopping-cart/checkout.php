@@ -1,6 +1,15 @@
 <?php
+// Suppress warnings and errors to prevent HTML output
+error_reporting(0);
+ini_set('display_errors', 0);
+
 session_start();
 header('Content-Type: application/json');
+
+// Clear any output buffer to prevent HTML before JSON
+while (ob_get_level()) {
+    ob_end_clean();
+}
 
 require_once __DIR__ . '/../../services/AuthService.php';
 require_once __DIR__ . '/../../services/OrderService.php';

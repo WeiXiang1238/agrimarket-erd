@@ -7,6 +7,7 @@ require_once __DIR__ . '/../models/Customer.php';
 require_once __DIR__ . '/../models/Product.php';
 require_once __DIR__ . '/../models/Payment.php';
 require_once __DIR__ . '/NotificationService.php';
+require_once __DIR__ . '/InventoryService.php';
 
 /**
  * OrderService
@@ -16,19 +17,18 @@ class OrderService
 {
     private $db;
     private $notificationService;
+    private $inventoryService;
     
     public function __construct()
     {
-        global $host, $user, $pass, $dbname;
-        try {
-            $this->db = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
-            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            throw new Exception("Database connection failed: " . $e->getMessage());
+        global $conn;
+        if (!$conn || $conn->connect_error) {
+            throw new Exception('Database connection failed');
         }
+        $this->db = $conn;
         
         $this->notificationService = new NotificationService();
+        $this->inventoryService = new InventoryService();
     }
     
     /**
@@ -37,7 +37,7 @@ class OrderService
     public function createOrderFromCart($customerId, $shippingAddress, $billingAddress = null, $paymentMethodId = null, $notes = null)
     {
         try {
-            $this->db->beginTransaction();
+            $this->db->begin_transaction();
             
             // Get customer cart items
             $cartItems = $this->getCartItems($customerId);
@@ -81,11 +81,10 @@ class OrderService
                     ) VALUES (?, ?, NOW(), 'Pending', ?, ?, ?, 'Unpaid')
                 ");
                 
-                $stmt->execute([
-                    $customerId, $vendorId, $totalAmount, $shippingCost, $finalAmount
-                ]);
+                $stmt->bind_param('idddd', $customerId, $vendorId, $totalAmount, $shippingCost, $finalAmount);
+                $stmt->execute();
                 
-                $orderId = $this->db->lastInsertId();
+                $orderId = $this->db->insert_id;
                 
                 // Add order items
                 foreach ($items as $item) {
@@ -96,10 +95,9 @@ class OrderService
                         VALUES (?, ?, ?, ?, ?)
                     ");
                     
-                    $stmt->execute([
-                        $orderId, $item['product_id'], $item['quantity'], 
-                        $item['selling_price'], $subtotal
-                    ]);
+                    $stmt->bind_param('iiddd', $orderId, $item['product_id'], $item['quantity'], 
+                        $item['selling_price'], $subtotal);
+                    $stmt->execute();
                     
                     // Update product stock
                     $this->updateProductStock($item['product_id'], $item['quantity']);
@@ -122,8 +120,11 @@ class OrderService
             try {
                 // Get customer user ID for notification
                 $stmt = $this->db->prepare("SELECT user_id FROM customers WHERE customer_id = ?");
-                $stmt->execute([$customerId]);
-                $customerUserId = $stmt->fetch()['user_id'];
+                $stmt->bind_param('i', $customerId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $customerData = $result->fetch_assoc();
+                $customerUserId = $customerData ? $customerData['user_id'] : null;
                 
                 // Create notification for customer
                 if ($customerUserId) {
@@ -141,8 +142,11 @@ class OrderService
                     
                     // Get vendor user ID
                     $stmt = $this->db->prepare("SELECT user_id FROM vendors WHERE vendor_id = ?");
-                    $stmt->execute([$vendorId]);
-                    $vendorUserId = $stmt->fetch()['user_id'];
+                    $stmt->bind_param('i', $vendorId);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $vendorData = $result->fetch_assoc();
+                    $vendorUserId = $vendorData ? $vendorData['user_id'] : null;
                     
                     if ($vendorUserId) {
                         $this->notificationService->createNotification(
@@ -165,7 +169,7 @@ class OrderService
             ];
             
         } catch (Exception $e) {
-            $this->db->rollBack();
+            $this->db->rollback();
             return ['success' => false, 'message' => 'Failed to create order: ' . $e->getMessage()];
         }
     }
@@ -193,8 +197,14 @@ class OrderService
                 FROM orders o 
                 WHERE $whereClause
             ");
-            $countStmt->execute($params);
-            $total = $countStmt->fetch()['total'];
+            if (!empty($params)) {
+                $types = str_repeat('s', count($params));
+                $countStmt->bind_param($types, ...$params);
+            }
+            $countStmt->execute();
+            $result = $countStmt->get_result();
+            $totalData = $result ? $result->fetch_assoc() : null;
+            $total = $totalData ? $totalData['total'] : 0;
             
             $sql = "
                 SELECT 
@@ -213,18 +223,15 @@ class OrderService
 
             $stmt = $this->db->prepare($sql);
 
-            /* bind WHERE-clause params first */
-            $index = 1;
-            foreach ($params as $val) {
-                $stmt->bindValue($index++, $val);        // default string binding is fine
-            }
-
-            /* bind LIMIT / OFFSET with correct type */
-            $stmt->bindValue($index++, (int)$limit,  PDO::PARAM_INT);
-            $stmt->bindValue($index++, (int)$offset, PDO::PARAM_INT);
-
+            // Prepare types string for bind_param
+            $types = str_repeat('s', count($params)) . 'ii';
+            $bindParams = $params;
+            $bindParams[] = (int)$limit;
+            $bindParams[] = (int)$offset;
+            $stmt->bind_param($types, ...$bindParams);
             $stmt->execute();
-$orders = $stmt->fetchAll();
+            $result = $stmt->get_result();
+            $orders = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
             
             return [
                 'success' => true,
@@ -435,8 +442,10 @@ $orders = $stmt->fetchAll();
             LEFT JOIN products p ON sc.product_id = p.product_id
             WHERE sc.customer_id = ? AND p.is_archive = 0
         ");
-        $stmt->execute([$customerId]);
-        return $stmt->fetchAll();
+        $stmt->bind_param('i', $customerId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
     }
     
     private function generateOrderNumber()
@@ -446,18 +455,49 @@ $orders = $stmt->fetchAll();
     
     private function updateProductStock($productId, $quantity)
     {
-        $stmt = $this->db->prepare("
-            UPDATE products 
-            SET stock_quantity = stock_quantity - ?
-            WHERE product_id = ?
-        ");
-        $stmt->execute([$quantity, $productId]);
+        try {
+            // Get current product information before updating
+            $stmt = $this->db->prepare("
+                SELECT p.*, v.business_name as vendor_name, v.user_id as vendor_user_id
+                FROM products p
+                LEFT JOIN vendors v ON p.vendor_id = v.vendor_id
+                WHERE p.product_id = ?
+            ");
+            $stmt->bind_param('i', $productId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $product = $result->fetch_assoc();
+            
+            if (!$product) {
+                throw new Exception('Product not found');
+            }
+            
+            $previousStock = $product['stock_quantity'];
+            $newStock = $previousStock - $quantity;
+            
+            // Update the stock
+            $stmt = $this->db->prepare("
+                UPDATE products 
+                SET stock_quantity = stock_quantity - ?
+                WHERE product_id = ?
+            ");
+            $stmt->bind_param('ii', $quantity, $productId);
+            $stmt->execute();
+            
+            // Check for low stock notifications after order
+            $this->checkLowStockAfterOrder($product, $previousStock, $newStock);
+            
+        } catch (Exception $e) {
+            error_log('Error updating product stock: ' . $e->getMessage());
+            // Continue with order processing even if notification fails
+        }
     }
     
     private function clearCart($customerId)
     {
         $stmt = $this->db->prepare("DELETE FROM shopping_cart WHERE customer_id = ?");
-        $stmt->execute([$customerId]);
+        $stmt->bind_param('i', $customerId);
+        $stmt->execute();
     }
     
     private function addToCart($customerId, $productId, $quantity)
@@ -467,8 +507,10 @@ $orders = $stmt->fetchAll();
             SELECT cart_id, quantity FROM shopping_cart 
             WHERE customer_id = ? AND product_id = ?
         ");
-        $stmt->execute([$customerId, $productId]);
-        $existing = $stmt->fetch();
+        $stmt->bind_param('ii', $customerId, $productId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $existing = $result->fetch_assoc();
         
         if ($existing) {
             // Update quantity
@@ -477,14 +519,16 @@ $orders = $stmt->fetchAll();
                 SET quantity = quantity + ?, updated_at = NOW()
                 WHERE cart_id = ?
             ");
-            $stmt->execute([$quantity, $existing['cart_id']]);
+            $stmt->bind_param('ii', $quantity, $existing['cart_id']);
+            $stmt->execute();
         } else {
             // Add new item
             $stmt = $this->db->prepare("
                 INSERT INTO shopping_cart (customer_id, product_id, quantity)
                 VALUES (?, ?, ?)
             ");
-            $stmt->execute([$customerId, $productId, $quantity]);
+            $stmt->bind_param('iii', $customerId, $productId, $quantity);
+            $stmt->execute();
         }
         
         return ['success' => true];
@@ -531,8 +575,10 @@ $orders = $stmt->fetchAll();
             if ($userRole === 'customer' && $userId) {
                 // Get customer_id from user_id
                 $stmt = $this->db->prepare("SELECT customer_id FROM customers WHERE user_id = ?");
-                $stmt->execute([$userId]);
-                $customer = $stmt->fetch();
+                $stmt->bind_param('i', $userId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $customer = $result->fetch_assoc();
                 if ($customer) {
                     $whereConditions[] = 'customer_id = ?';
                     $params[] = $customer['customer_id'];
@@ -556,8 +602,13 @@ $orders = $stmt->fetchAll();
                 WHERE $whereClause
             ");
             
-            $stmt->execute($params);
-            return $stmt->fetch();
+            if (!empty($params)) {
+                $types = str_repeat('s', count($params));
+                $stmt->bind_param($types, ...$params);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result->fetch_assoc();
             
         } catch (Exception $e) {
             return [
@@ -666,7 +717,7 @@ $orders = $stmt->fetchAll();
     public function cancelOrder($orderId, $customerId, $reason = 'Customer request')
     {
         try {
-            $this->db->beginTransaction();
+            $this->db->begin_transaction();
             
             // Check if order can be cancelled
             $stmt = $this->db->prepare("
@@ -741,7 +792,7 @@ $orders = $stmt->fetchAll();
             return ['success' => true, 'message' => 'Order cancelled successfully'];
             
         } catch (Exception $e) {
-            $this->db->rollBack();
+            $this->db->rollback();
             return ['success' => false, 'message' => 'Failed to cancel order: ' . $e->getMessage()];
         }
     }
@@ -848,8 +899,14 @@ $orders = $stmt->fetchAll();
                 FROM orders o 
                 WHERE $whereClause
             ");
-            $countStmt->execute($params);
-            $total = $countStmt->fetch()['total'];
+            if (!empty($params)) {
+                $types = str_repeat('s', count($params));
+                $countStmt->bind_param($types, ...$params);
+            }
+            $countStmt->execute();
+            $result = $countStmt->get_result();
+            $totalData = $result ? $result->fetch_assoc() : null;
+            $total = $totalData ? $totalData['total'] : 0;
             
             // Get orders - create separate params array for main query
             $mainQueryParams = $params; // Copy original params
@@ -903,6 +960,145 @@ $orders = $stmt->fetchAll();
             
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Failed to fetch orders: ' . $e->getMessage()];
+        }
+    }
+    
+    /**
+     * Check for low stock notifications after customer order
+     */
+    private function checkLowStockAfterOrder($product, $previousStock, $newStock)
+    {
+        try {
+            $lowStockThreshold = 10; // Default threshold
+            
+            // Check if stock has crossed the low stock threshold
+            $wasAboveThreshold = $previousStock > $lowStockThreshold;
+            $isNowBelowThreshold = $newStock <= $lowStockThreshold && $newStock > 0;
+            
+            if ($wasAboveThreshold && $isNowBelowThreshold) {
+                // Stock has just become low due to customer order - send notification
+                $this->sendLowStockNotificationAfterOrder($product, $newStock, $lowStockThreshold);
+            } elseif ($newStock == 0) {
+                // Stock has become zero due to customer order - send out of stock notification
+                $this->sendOutOfStockNotificationAfterOrder($product);
+            }
+            
+        } catch (Exception $e) {
+            error_log('Error checking low stock notification after order: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Send low stock notification after customer order
+     */
+    private function sendLowStockNotificationAfterOrder($product, $currentStock, $threshold)
+    {
+        try {
+            // Notify vendor
+            if ($product['vendor_user_id']) {
+                $this->notificationService->createNotification(
+                    $product['vendor_user_id'],
+                    'Low Stock Alert - Customer Order',
+                    "Your product '{$product['name']}' is running low on stock after a customer order. Current stock: {$currentStock} (Threshold: {$threshold}). Consider restocking soon.",
+                    'inventory'
+                );
+            }
+            
+            // Notify admin users
+            $this->notifyAdminsLowStockAfterOrder($product, $currentStock, $threshold);
+            
+        } catch (Exception $e) {
+            error_log('Error sending low stock notification after order: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Send out of stock notification after customer order
+     */
+    private function sendOutOfStockNotificationAfterOrder($product)
+    {
+        try {
+            // Notify vendor
+            if ($product['vendor_user_id']) {
+                $this->notificationService->createNotification(
+                    $product['vendor_user_id'],
+                    'Out of Stock Alert - Customer Order',
+                    "Your product '{$product['name']}' is now out of stock after a customer order. Please restock immediately to avoid losing sales.",
+                    'inventory'
+                );
+            }
+            
+            // Notify admin users
+            $this->notifyAdminsOutOfStockAfterOrder($product);
+            
+        } catch (Exception $e) {
+            error_log('Error sending out of stock notification after order: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Notify admin users about low stock after customer order
+     */
+    private function notifyAdminsLowStockAfterOrder($product, $currentStock, $threshold)
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT DISTINCT u.user_id, u.name, u.email
+                FROM users u
+                JOIN user_roles ur ON u.user_id = ur.user_id
+                JOIN roles r ON ur.role_id = r.role_id
+                WHERE r.role_name = 'admin' 
+                AND u.is_active = 1 
+                AND ur.is_active = 1
+            ");
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $admins = $result->fetch_all(MYSQLI_ASSOC);
+            
+            foreach ($admins as $admin) {
+                $this->notificationService->createNotification(
+                    $admin['user_id'],
+                    'Low Stock Alert - Customer Order (Admin)',
+                    "Product '{$product['name']}' (Vendor: {$product['vendor_name']}) is running low on stock after a customer order. Current stock: {$currentStock} (Threshold: {$threshold}).",
+                    'inventory'
+                );
+            }
+            
+        } catch (Exception $e) {
+            error_log('Error notifying admins about low stock after order: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Notify admin users about out of stock after customer order
+     */
+    private function notifyAdminsOutOfStockAfterOrder($product)
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT DISTINCT u.user_id, u.name, u.email
+                FROM users u
+                JOIN user_roles ur ON u.user_id = ur.user_id
+                JOIN roles r ON ur.role_id = r.role_id
+                WHERE r.role_name = 'admin' 
+                AND u.is_active = 1 
+                AND ur.is_active = 1
+            ");
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $admins = $result->fetch_all(MYSQLI_ASSOC);
+            
+            foreach ($admins as $admin) {
+                $this->notificationService->createNotification(
+                    $admin['user_id'],
+                    'Out of Stock Alert - Customer Order (Admin)',
+                    "Product '{$product['name']}' (Vendor: {$product['vendor_name']}) is now out of stock after a customer order. Vendor needs to restock immediately.",
+                    'inventory'
+                );
+            }
+            
+        } catch (Exception $e) {
+            error_log('Error notifying admins about out of stock after order: ' . $e->getMessage());
         }
     }
 }

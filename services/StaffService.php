@@ -709,7 +709,7 @@ class StaffService
             
             $stmt = $db->prepare("
                 INSERT INTO staff_tasks (
-                    staff_id, title, description, priority, 
+                    staff_id, task_title, task_description, priority, 
                     status, due_date, assigned_date
                 ) VALUES (?, ?, ?, ?, 'pending', ?, NOW())
             ");
@@ -741,8 +741,8 @@ class StaffService
         $stmt = $db->prepare("
             SELECT 
                 task_id,
-                title,
-                description,
+                task_title as title,
+                task_description as description,
                 priority,
                 status,
                 due_date,
@@ -858,8 +858,8 @@ class StaffService
             }
             $stmt = $db->prepare("
                 UPDATE staff_tasks SET
-                    title = ?,
-                    description = ?,
+                    task_title = ?,
+                    task_description = ?,
                     priority = ?,
                     due_date = ?
                 WHERE task_id = ?

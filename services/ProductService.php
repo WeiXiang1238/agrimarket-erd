@@ -118,6 +118,10 @@ class ProductService
                     $whereConditions[] = 'p.category = ?';
                     $params[] = $categoryData['name'];
                 }
+            } elseif (!empty($filters['category'])) {
+                // Direct category name filter
+                $whereConditions[] = 'p.category = ?';
+                $params[] = $filters['category'];
             }
             
             // Vendor filter (only for admin)
@@ -126,14 +130,15 @@ class ProductService
                 $params[] = $filters['vendor_id'];
             }
             
-            // Status filter - using stock_quantity > 0 as active indicator
+            // Status filter - using stock_quantity for inventory status
             if (!empty($filters['status'])) {
-                if ($filters['status'] === 'active') {
+                if ($filters['status'] === 'active' || $filters['status'] === 'in_stock') {
                     $whereConditions[] = 'p.stock_quantity > 0';
                 } elseif ($filters['status'] === 'out_of_stock') {
                     $whereConditions[] = 'p.stock_quantity = 0';
+                } elseif ($filters['status'] === 'low_stock') {
+                    $whereConditions[] = 'p.stock_quantity > 0 AND p.stock_quantity <= 10';
                 }
-                // No inactive status in current schema
             }
             
             $whereClause = implode(' AND ', $whereConditions);
