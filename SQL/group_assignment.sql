@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 02, 2025 at 05:12 PM
+-- Generation Time: Jul 04, 2025 at 08:00 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -241,7 +241,41 @@ INSERT INTO `notifications` (`notification_id`, `user_id`, `message`, `is_read`,
 (83, 17, 'Your order has been placed successfully. You will receive updates on your order status.', 1, 'order', '2025-07-02 14:28:25'),
 (84, 6, 'You have received a new order #9 with total amount $11.06', 0, 'order', '2025-07-02 14:28:25'),
 (85, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-02 15:01:48'),
-(86, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-02 15:01:49');
+(86, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-02 15:01:49'),
+(87, 1, 'Most searched products report has been successfully exported for 30 days timeframe.', 0, '', '2025-07-04 05:29:07'),
+(88, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:30:20'),
+(89, 6, 'Your subscription plan has been changed to Silver successfully.', 0, NULL, '2025-07-04 05:40:34'),
+(90, 6, 'Your subscription plan has been changed to Gold successfully.', 0, NULL, '2025-07-04 05:40:36'),
+(91, 6, 'Your subscription plan has been changed to Platinum successfully.', 0, NULL, '2025-07-04 05:41:05'),
+(92, 6, 'Your subscription plan has been changed to Silver successfully.', 0, NULL, '2025-07-04 05:41:16'),
+(93, 6, 'Your subscription plan has been changed to Gold successfully.', 0, NULL, '2025-07-04 05:41:18'),
+(94, 6, 'Your subscription plan has been changed to Gold successfully.', 0, NULL, '2025-07-04 05:41:29'),
+(95, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:43:59'),
+(96, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:46:32'),
+(97, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:46:56'),
+(98, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:46:57'),
+(99, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:47:12'),
+(100, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:51:07'),
+(101, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:51:08'),
+(102, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:51:13'),
+(103, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:51:42'),
+(104, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:53:28'),
+(105, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:53:48'),
+(106, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:54:02'),
+(107, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:54:32'),
+(108, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:54:45'),
+(109, 6, 'Sales report report has been successfully exported for monthly timeframe.', 0, '', '2025-07-04 05:55:34'),
+(110, 6, 'Sales report report has been successfully exported for monthly timeframe.', 0, '', '2025-07-04 05:58:14'),
+(111, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:58:16'),
+(112, 6, 'Sales report report has been successfully exported for monthly timeframe.', 0, '', '2025-07-04 05:58:18'),
+(113, 6, 'Most ordered products report has been successfully exported for 30 days timeframe.', 0, '', '2025-07-04 05:58:27'),
+(114, 6, 'Most ordered products report has been successfully exported for 30 days timeframe.', 0, '', '2025-07-04 05:58:41'),
+(115, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:59:04'),
+(116, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:59:05'),
+(117, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:59:05'),
+(118, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:59:05'),
+(119, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:59:06'),
+(120, 6, '1 products are running low on stock. Consider restocking soon.', 0, '', '2025-07-04 05:59:06');
 
 -- --------------------------------------------------------
 
@@ -1995,7 +2029,7 @@ CREATE TABLE `products` (
 
 INSERT INTO `products` (`product_id`, `vendor_id`, `name`, `description`, `category`, `packaging`, `base_price`, `selling_price`, `stock_quantity`, `is_discounted`, `discount_percent`, `image_path`, `is_archive`) VALUES
 (1, 5, 'adf1', 'adfasdfasfd1', 'Aquaculture', 'asdf1', 12.01, 21.01, 6, 0, NULL, 'uploads/products/product_685e99a2228d1_1751030178.png', 0),
-(2, 5, '123', '1', 'Aquaculture', 'asdf1', 1.00, 1.00, 19, 0, NULL, 'uploads/products/product_685f63318e4d6_1751081777.png', 0);
+(2, 5, '123', '1', 'Aquaculture', 'asdf1', 2.00, 1.00, 19, 0, NULL, 'uploads/products/product_685f63318e4d6_1751081777.png', 0);
 
 -- --------------------------------------------------------
 
@@ -2591,11 +2625,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `name`, `email`, `phone`, `password`, `role`, `profile_picture`, `is_active`, `email_verified_at`, `phone_verified_at`, `last_login_at`, `remember_token`, `is_archive`, `created_at`, `updated_at`) VALUES
-(1, 'admin1', 'admin1@agrimarket.com', NULL, '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'admin', NULL, 1, NULL, NULL, '2025-07-02 10:40:18', NULL, 0, '2025-06-19 14:39:41', '2025-07-02 10:40:18'),
+(1, 'admin1', 'admin1@agrimarket.com', NULL, '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'admin', NULL, 1, NULL, NULL, '2025-07-04 05:31:05', NULL, 0, '2025-06-19 14:39:41', '2025-07-04 05:31:05'),
 (2, 'admin2', 'admin2@agrimarket.com', NULL, '$2y$10$kl4SktklyYQdRxYqq7PLeuFja.77aVWkPdwMXb44gJjuwLnOhpxyi', 'admin', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-19 14:39:53', '2025-06-20 13:50:04'),
 (3, 'Vendor A', 'vendorA@example.com', NULL, '$2y$10$TSDsfclxAVwtdOII6l83g.MjsGl8wb6cbWOqNOP5s1sGpQxGq9MwK', 'vendor', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-19 14:40:30', '2025-06-21 14:44:43'),
 (5, 'John Smith', 'john@smithfarm.com', NULL, '$2y$10$xInG4K4NR5NtrFy0lauEwe4eqYKHdpYwV3Ae84CiyA75R679Ioyd.', 'vendor', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-21 11:19:22', '2025-06-21 15:00:43'),
-(6, 'Test User Gold', 'gold@testbusiness.com', NULL, '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'vendor', NULL, 1, NULL, NULL, '2025-07-02 15:01:43', NULL, 0, '2025-06-21 11:31:21', '2025-07-02 15:01:43'),
+(6, 'Test User Gold', 'gold@testbusiness.com', NULL, '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'vendor', NULL, 1, NULL, NULL, '2025-07-04 05:30:17', NULL, 0, '2025-06-21 11:31:21', '2025-07-04 05:30:17'),
 (7, 'Vendor Test 2', 'vendor2@example.com', NULL, '$2y$10$xR1FOYBRZD9L5vAnDIdLg.m/pfx0VbQCoJCNb3ddJDYx/C8FFPeOO', 'vendor', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-21 11:33:22', '2025-06-21 11:33:22'),
 (8, 'test', 'test@gmail.com', '+60123456789', '$2y$10$qNJsIKGvt6c.bS5.xJHXkuFDUSAEjqiLEz47lTXJ12uNZq7PSoifq', 'customer', NULL, 1, NULL, NULL, '2025-06-21 14:44:41', NULL, 0, '2025-06-21 12:36:33', '2025-06-21 14:44:41'),
 (9, 'C1', 'c1@gmail.com', '+60123456789', '$2y$10$Fnv0TIMu/H3ZZP6s8oupRO4AmnrnufeSRl5H/o23FGhB2TdI4eT6y', 'customer', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-21 14:15:28', '2025-06-21 14:15:28'),
@@ -2605,10 +2639,10 @@ INSERT INTO `users` (`user_id`, `name`, `email`, `phone`, `password`, `role`, `p
 (13, 'Test Customer Fixed 1750515957', 'testcustomerfixed1750515957@example.com', '1234567890', '$2y$10$hoZ99UuOSfpzdojFXxNmMOzDEaPp2KQRDJ7sBT0zsG3gw0SPL7v9.', 'customer', NULL, 1, NULL, NULL, '2025-06-21 14:25:57', NULL, 0, '2025-06-21 14:25:57', '2025-06-21 14:25:57'),
 (14, 'Test Vendor Fixed 1750515957', 'testvendorfixed1750515957@example.com', '1234567890', '$2y$10$5Ma6.Pi8tsjt4AqoWGs/t.NptpDvzAyudUAGm9ffeU/zwAJ3HfC0O', 'vendor', NULL, 1, NULL, NULL, '2025-06-21 14:25:57', NULL, 0, '2025-06-21 14:25:57', '2025-06-21 14:25:57'),
 (16, 'c3', 'c3@gmail.com', '+60123456789', '$2y$10$YONe9Fazgbq7f1XmmnFSEuDNTeztLFMjs/zyrFkcRq9MfppyBYWGG', 'customer', NULL, 1, NULL, NULL, '2025-06-21 14:42:24', NULL, 0, '2025-06-21 14:35:17', '2025-06-21 14:42:41'),
-(17, 'c4', 'c4@gmail.com', '+60123456789', '$2y$10$UjacUzyKFBmjUEFiP2PoFORxT3tCHq68iz3m09lvgbL28H9c7JmRy', 'customer', NULL, 1, NULL, NULL, '2025-07-02 14:18:56', NULL, 0, '2025-06-21 14:47:16', '2025-07-02 14:18:56'),
+(17, 'c4', 'c4@gmail.com', '+60123456789', '$2y$10$UjacUzyKFBmjUEFiP2PoFORxT3tCHq68iz3m09lvgbL28H9c7JmRy', 'customer', NULL, 1, NULL, NULL, '2025-07-02 15:21:26', NULL, 0, '2025-06-21 14:47:16', '2025-07-02 15:21:26'),
 (18, 'v2', 'v2@gmail.com', '+60123456789', '$2y$10$qcKGtO9NMPllEkf/p0e39eI886UOL0CBKiWqjCP/F5mjAoD4Ihira', 'vendor', NULL, 1, NULL, NULL, '2025-06-21 14:47:57', NULL, 0, '2025-06-21 14:47:52', '2025-06-21 14:47:57'),
 (19, 'adfs', 'weixiang1238@gmail.com', '123123123', '$2y$10$1z3nOPwxroFPBqkIErnT/ezoWqCNsIuW3ujSrCv/X2IyYXYWwyFr2', 'customer', NULL, 1, NULL, NULL, NULL, NULL, 0, '2025-06-21 14:58:09', '2025-06-21 15:01:03'),
-(21, 'd123123', 'driver41@gmail.com', '123123123123', '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'staff', NULL, 1, NULL, NULL, '2025-07-02 10:41:16', NULL, 0, '2025-06-27 03:34:30', '2025-07-02 10:41:16');
+(21, 'd123123', 'driver41@gmail.com', '123123123123', '$2y$10$VDeO8MI09SDjMVWzk9tmruK.n1EHpSKrBCVazRCZycdFiGjsHffpC', 'staff', NULL, 1, NULL, NULL, '2025-07-04 05:30:00', NULL, 0, '2025-06-27 03:34:30', '2025-07-04 05:30:00');
 
 -- --------------------------------------------------------
 
@@ -2671,7 +2705,7 @@ CREATE TABLE `vendors` (
 INSERT INTO `vendors` (`vendor_id`, `user_id`, `business_name`, `contact_number`, `address`, `website_url`, `description`, `subscription_tier_id`, `registration_date`, `is_archive`, `tier_id`) VALUES
 (3, 3, 'vendor A', '012-3456789', 'Lot 1, Jalan Satu, Kedah', NULL, NULL, 1, '2025-06-19', 0, 1),
 (4, 5, 'Smith Premium Farm Products', '+1234567891', '123 Premium Farm Road, Agriculture Valley, AV 12345', 'https://www.smithfarm.com', 'Premium organic farm producing the finest vegetables and fruits', 1, '2025-06-21', 0, 1),
-(5, 6, 'Gold Tier Test Business', '+1234567890', '123 Gold Street, Test City, TC 12345', NULL, NULL, 3, '2025-06-21', 0, 1),
+(5, 6, 'Gold Tier Test Business', '+1234567890', '123 Gold Street, Test City, TC 12345', NULL, NULL, 3, '2025-06-21', 0, 3),
 (6, 7, 'test vendor 2', '+60123456789', 'aslgdfj asdgaj sdlgkj ', 'https://asdfadsf.com', 'asdjkfhaj dfa;dlsfj hadf adf', 2, '2025-06-21', 0, 1),
 (7, 10, 'V2', '+60123456789', 'asgsdf asdf ag agagda', 'https://asdfadsf.com', 'adfasdgs asdg asdg', 1, '2025-06-21', 0, 1),
 (8, 14, 'Test Business Fixed', '1234567890', '123 Test St, Test City, Test State', 'https://testfixed.com', 'Test business description fixed', 1, '2025-06-21', 0, 1),
@@ -2731,7 +2765,13 @@ CREATE TABLE `vendor_subscriptions` (
 --
 
 INSERT INTO `vendor_subscriptions` (`id`, `vendor_id`, `tier_id`, `start_date`, `end_date`, `payment_amount`, `is_active`) VALUES
-(2, 3, 1, '2025-06-19', '2025-07-19', 0.00, 1);
+(2, 3, 1, '2025-06-19', '2025-07-19', 0.00, 1),
+(3, 5, 2, '2025-07-04', '2025-08-04', 49.90, 0),
+(4, 5, 3, '2025-07-04', '2025-08-04', 89.90, 0),
+(5, 5, 4, '2025-07-04', '2025-08-04', 119.90, 0),
+(6, 5, 2, '2025-07-04', '2025-08-04', 49.90, 0),
+(7, 5, 3, '2025-07-04', '2025-08-04', 89.90, 0),
+(8, 5, 3, '2025-07-04', '2025-08-04', 89.90, 1);
 
 --
 -- Indexes for dumped tables
@@ -2975,7 +3015,7 @@ ALTER TABLE `customer_addresses`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=121;
 
 --
 -- AUTO_INCREMENT for table `orders`
@@ -3101,7 +3141,7 @@ ALTER TABLE `vendor_reviews`
 -- AUTO_INCREMENT for table `vendor_subscriptions`
 --
 ALTER TABLE `vendor_subscriptions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- Constraints for dumped tables
