@@ -863,6 +863,7 @@ class OrderService
             $stmt = $this->db->prepare("
                 SELECT 
                     o.*,
+                    v.business_name as vendor_name,
                     c.customer_id,
                     u.name as customer_name,
                     u.email as customer_email,
@@ -872,6 +873,7 @@ class OrderService
                         SEPARATOR ', '
                     ) as items_summary
                 FROM orders o
+                LEFT JOIN vendors v ON o.vendor_id = v.vendor_id
                 LEFT JOIN customers c ON o.customer_id = c.customer_id
                 LEFT JOIN users u ON c.user_id = u.user_id
                 LEFT JOIN order_items oi ON o.order_id = oi.order_id

@@ -117,7 +117,7 @@ if ($currentUser['role'] === 'vendor') {
 
 // Account Statistics
 $statCreatedAt = $currentUser['created_at'] ?? null;
-$statLastLogin = $currentUser['last_login'] ?? null;
+$statLastLogin = $currentUser['last_login_at'] ?? null;
 
 // Get vendor subscription info if user is vendor
 $vendorSubscriptionInfo = null;

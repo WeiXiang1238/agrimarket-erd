@@ -227,7 +227,7 @@ if ($userRoles['isAdmin']) {
                                 <div class="order-info">
                                     <h3>Order #<?php echo $order['order_id']; ?></h3>
                                     <p class="order-date"><?php echo date('M j, Y g:i A', strtotime($order['order_date'])); ?></p>
-                                    <p class="vendor-name">from <?php echo htmlspecialchars($order['vendor_name']); ?></p>
+                                    <p class="vendor-name">from <?php echo htmlspecialchars($order['vendor_name'] ?? 'Unknown Vendor'); ?></p>
                                     
                                     <?php if ($userRoles['isAdmin'] && isset($order['customer_name'])): ?>
                                         <p class="customer-name">Customer: <?php echo htmlspecialchars($order['customer_name']); ?></p>
@@ -296,7 +296,7 @@ if ($userRoles['isAdmin']) {
                                         <button class="btn btn-primary" onclick="reorderItems(<?php echo $order['order_id']; ?>)">
                                             <i class="fas fa-redo"></i> Reorder
                                         </button>
-                                        <button class="btn btn-success" onclick="openReviewModal(<?php echo $order['order_id']; ?>, '<?php echo htmlspecialchars($order['vendor_name']); ?>')">
+                                        <button class="btn btn-success" onclick="openReviewModal(<?php echo $order['order_id']; ?>, '<?php echo htmlspecialchars($order['vendor_name'] ?? 'Unknown Vendor'); ?>')">
                                             <i class="fas fa-star"></i> Write Review
                                         </button>
                                     <?php endif; ?>

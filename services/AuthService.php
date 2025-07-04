@@ -168,7 +168,7 @@ class AuthService
         
         $db = $this->userModel->getDb();
         $stmt = $db->prepare("
-            SELECT u.user_id, u.name, u.email, u.role, u.profile_picture, u.last_login_at,
+            SELECT u.user_id, u.name, u.email, u.role, u.profile_picture, u.last_login_at, u.created_at,
                    GROUP_CONCAT(r.role_name) as roles,
                    GROUP_CONCAT(DISTINCT p.permission_name) as permissions
             FROM users u

@@ -130,8 +130,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'export_data':
                 $reportType = $_POST['report_type'] ?? '';
-                $response['data'] = $analyticsService->exportAnalyticsData($reportType, $timeframe, $userRole, $vendorId, $currentUser['user_id']);
-                $response['success'] = true;
+                $exportResult = $analyticsService->exportAnalyticsData($reportType, $timeframe, $userRole, $vendorId, $currentUser['user_id']);
+                
+                if ($exportResult['success']) {
+                    // Set headers for CSV download
+                    header('Content-Type: text/csv');
+                    header('Content-Disposition: attachment; filename="' . $exportResult['filename'] . '"');
+                    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+                    header('Pragma: public');
+                    
+                    // Output CSV content and exit
+                    echo $exportResult['content'];
+                    exit;
+                } else {
+                    $response['success'] = false;
+                    $response['error'] = $exportResult['message'] ?? 'Export failed';
+                }
                 break;
                 
             case 'get_page_visit_trends_by_type':
@@ -374,6 +388,7 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                         <div class="report-header">
                             <h3>Most Visited Pages</h3>
                             <div class="report-controls">
+                                <?php if ($userRole === 'admin'): ?>
                                 <div class="page-type-toggle">
                                     <button class="btn btn-sm btn-outline" id="productPagesBtn" onclick="togglePageType('product')">
                                         <i class="fas fa-box"></i> Product Pages
@@ -382,6 +397,7 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
                                         <i class="fas fa-globe"></i> All Pages
                                     </button>
                                 </div>
+                                <?php endif; ?>
                                 <select id="visitedPagesTimeframe" onchange="loadMostVisitedPages()">
                                     <option value="7 days">Last 7 days</option>
                                     <option value="30 days" selected>Last 30 days</option>
@@ -530,8 +546,10 @@ $dashboardAnalytics = $analyticsService->getDashboardAnalytics($userRole, $curre
             if (userRole === 'admin') {
                 loadMostSearchedVendors();
             }
-            // Set default active state for page type toggle
-            document.getElementById('productPagesBtn').classList.add('active');
+            // Set default active state for page type toggle and initialize page type
+            if (userRole === 'admin') {
+                document.getElementById('productPagesBtn').classList.add('active');
+            }
             // Load visited pages data
             loadMostVisitedPages();
             // Load page visit trends by type
